@@ -12,9 +12,9 @@ html, body {
   overflow: hidden;
 }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #ffffff;
-  color: #222;
+  font-family: 'Georgia', 'Garamond', 'Times New Roman', serif;
+  background: #f5f0eb;
+  color: #2a2420;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -31,51 +31,92 @@ body {
   width: 100%;
   padding: 2rem;
 }
-#talk-btn {
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  border: 3px solid #333;
-  background: #fafafa;
-  color: #222;
-  font-size: 26px;
-  font-weight: 600;
+/* Victorian mirror frame */
+#mirror-frame {
+  position: relative;
+  width: 240px;
+  height: 300px;
+  padding: 16px;
+  background: linear-gradient(145deg, #c9a84c, #8b6914, #c9a84c, #a07820, #dabb5e, #8b6914);
+  border-radius: 50% 50% 48% 48% / 55% 55% 45% 45%;
+  box-shadow:
+    0 0 0 3px #5a3e0a,
+    0 0 0 6px #8b6914,
+    0 4px 20px rgba(0,0,0,0.4),
+    inset 0 0 15px rgba(0,0,0,0.3);
   cursor: pointer;
+  touch-action: manipulation;
   transition: all 0.3s ease;
-  line-height: 1.3;
+}
+#mirror-frame:hover {
+  box-shadow:
+    0 0 0 3px #5a3e0a,
+    0 0 0 6px #8b6914,
+    0 4px 30px rgba(0,0,0,0.5),
+    inset 0 0 15px rgba(0,0,0,0.3);
+}
+#mirror-frame:active {
+  transform: scale(0.98);
+}
+/* The glass */
+#talk-btn {
+  width: 100%;
+  height: 100%;
+  border-radius: 50% 50% 46% 46% / 55% 55% 43% 43%;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: linear-gradient(170deg, rgba(220,225,235,0.9), rgba(190,195,210,0.7), rgba(210,215,225,0.8));
+  color: #3a3530;
+  font-family: 'Georgia', serif;
+  font-size: 24px;
+  font-weight: 400;
+  font-style: italic;
+  cursor: pointer;
+  transition: all 0.5s ease;
+  line-height: 1.4;
   -webkit-user-select: none;
   user-select: none;
-  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  /* Mirror shimmer */
+  background-image:
+    linear-gradient(170deg, transparent 30%, rgba(255,255,255,0.15) 45%, transparent 55%);
 }
 #talk-btn:hover {
-  background: #f0f0f0;
-  border-color: #111;
+  background: linear-gradient(170deg, rgba(225,230,240,0.95), rgba(200,205,218,0.8), rgba(215,220,230,0.85));
 }
-#talk-btn:active {
-  transform: scale(0.97);
+#mirror-frame.listening #talk-btn {
+  background: linear-gradient(170deg, rgba(200,235,220,0.9), rgba(180,215,200,0.7), rgba(195,225,210,0.8));
+  animation: mirror-breathe 3s ease-in-out infinite;
 }
-#talk-btn.listening {
-  border-color: #2a7;
-  background: #eafaf0;
-  animation: pulse-ring 2s ease-in-out infinite;
+#mirror-frame.speaking #talk-btn {
+  background: linear-gradient(170deg, rgba(210,215,240,0.9), rgba(190,195,225,0.7), rgba(200,210,235,0.8));
 }
-#talk-btn.speaking {
-  border-color: #57a;
-  background: #eef0fa;
+#mirror-frame.thinking #talk-btn {
+  background: linear-gradient(170deg, rgba(240,225,200,0.9), rgba(220,205,180,0.7), rgba(230,215,195,0.8));
 }
-#talk-btn.thinking {
-  border-color: #a80;
-  background: #fdf8ee;
+@keyframes mirror-breathe {
+  0%, 100% { box-shadow: inset 0 0 30px rgba(42,119,80,0.08); }
+  50% { box-shadow: inset 0 0 50px rgba(42,119,80,0.15); }
 }
-@keyframes pulse-ring {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(42,119,80,0.25); }
-  50% { box-shadow: 0 0 0 18px rgba(42,119,80,0); }
+/* Ornamental flourish at top of frame */
+#mirror-frame::before {
+  content: '❦';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  color: #5a3e0a;
+  z-index: 2;
 }
 #voiced-by {
-  margin-top: 1rem;
-  font-size: 15px;
-  color: #999;
-  letter-spacing: 0.03em;
+  margin-top: 1.2rem;
+  font-size: 14px;
+  color: #998877;
+  letter-spacing: 0.08em;
+  font-style: italic;
 }
 #status {
   margin-top: 2rem;
@@ -94,21 +135,15 @@ body {
   line-height: 1.5;
   min-height: 3rem;
 }
-/* Adapt text color when background goes dark */
-body.dark-bg { color: #eee; }
-body.dark-bg #talk-btn { background: rgba(255,255,255,0.12); border-color: #ccc; color: #eee; }
-body.dark-bg #talk-btn.listening { background: rgba(42,119,80,0.2); border-color: #5cb; }
-body.dark-bg #talk-btn.speaking { background: rgba(87,112,170,0.2); border-color: #8af; }
-body.dark-bg #talk-btn.thinking { background: rgba(170,128,0,0.2); border-color: #da5; }
-body.dark-bg #voiced-by { color: #888; }
-body.dark-bg #status { color: #aaa; }
-body.dark-bg #transcript { color: #ccc; }
+/* No background color changes — the mirror is the constant */
 </style>
 </head>
 <body>
 
 <div id="main">
-  <button id="talk-btn">Talk to<br>Nora</button>
+  <div id="mirror-frame">
+    <button id="talk-btn">Talk to<br>Nora</button>
+  </div>
   <div id="voiced-by">voiced by Cori</div>
   <div id="status"></div>
   <div id="transcript"></div>
@@ -133,17 +168,10 @@ const btn = document.getElementById('talk-btn');
 const statusEl = document.getElementById('status');
 const transcriptEl = document.getElementById('transcript');
 
-// === HSL BACKGROUND ===
+// === HSL — stored but not displayed (no color changes) ===
 function applyHSL(hsl) {
-  if (!hsl) return;
-  const { h, s, l } = hsl;
-  document.body.style.backgroundColor = `hsl(${h}, ${s}%, ${l}%)`;
-  // Toggle dark-bg class for text readability
-  if (l < 45) {
-    document.body.classList.add('dark-bg');
-  } else {
-    document.body.classList.remove('dark-bg');
-  }
+  // HSL data captured for dark circuit but mirror stays constant
+  return;
 }
 
 // === SPEECH RECOGNITION ===
@@ -160,7 +188,7 @@ function createRecognition() {
 
   rec.onstart = () => {
     listening = true;
-    btn.className = 'listening';
+    btn.className = 'listening'; document.getElementById('mirror-frame').className = 'listening';
     statusEl.textContent = 'Listening...';
   };
 
@@ -189,7 +217,7 @@ function createRecognition() {
     } else {
       statusEl.textContent = '';
       listening = false;
-      btn.className = '';
+      btn.className = ''; document.getElementById('mirror-frame').className = '';
     }
   };
 
@@ -245,7 +273,7 @@ async function handleUserSpeech(text) {
   listening = false;
   stopListening();
 
-  btn.className = 'thinking';
+  btn.className = 'thinking'; document.getElementById('mirror-frame').className = 'thinking';
   statusEl.textContent = 'Nora is thinking...';
   transcriptEl.textContent = '"' + text + '"';
 
@@ -259,7 +287,7 @@ async function handleUserSpeech(text) {
   } catch (err) {
     statusEl.textContent = '';
     transcriptEl.textContent = 'Could not reach Nora. Is the server running?';
-    btn.className = '';
+    btn.className = ''; document.getElementById('mirror-frame').className = '';
     // Retry listening after a pause
     setTimeout(startListening, 3000);
   }
@@ -290,7 +318,7 @@ function pickVoice() {
 function speak(text) {
   synth.cancel();
   speaking = true;
-  btn.className = 'speaking';
+  btn.className = 'speaking'; document.getElementById('mirror-frame').className = 'speaking';
   statusEl.textContent = '';
   transcriptEl.textContent = text;
 
@@ -302,14 +330,14 @@ function speak(text) {
 
   utter.onend = () => {
     speaking = false;
-    btn.className = '';
+    btn.className = ''; document.getElementById('mirror-frame').className = '';
     statusEl.textContent = '';
     startListening();
   };
 
   utter.onerror = () => {
     speaking = false;
-    btn.className = '';
+    btn.className = ''; document.getElementById('mirror-frame').className = '';
     statusEl.textContent = '';
     startListening();
   };
@@ -322,7 +350,7 @@ btn.addEventListener('click', () => {
   if (!started) {
     started = true;
     // First tap: fetch greeting and have Nora speak first
-    btn.className = 'thinking';
+    btn.className = 'thinking'; document.getElementById('mirror-frame').className = 'thinking';
     statusEl.textContent = 'Nora is thinking...';
     doGreeting();
     return;
@@ -332,12 +360,12 @@ btn.addEventListener('click', () => {
   if (speaking) {
     synth.cancel();
     speaking = false;
-    btn.className = '';
+    btn.className = ''; document.getElementById('mirror-frame').className = '';
     statusEl.textContent = '';
     startListening();
   } else if (listening) {
     stopListening();
-    btn.className = '';
+    btn.className = ''; document.getElementById('mirror-frame').className = '';
     statusEl.textContent = '';
   } else {
     startListening();
@@ -365,7 +393,7 @@ async function doGreeting() {
   } catch (err) {
     statusEl.textContent = '';
     transcriptEl.textContent = 'Could not reach Nora. Is the server running?';
-    btn.className = '';
+    btn.className = ''; document.getElementById('mirror-frame').className = '';
     started = false;
   }
 }

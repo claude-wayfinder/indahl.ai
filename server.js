@@ -156,9 +156,32 @@ function extractHSL(text) {
 
 // --- HTTP Server ---
 
+// Rate limiting — per IP, per minute
+const rateLimiter = new Map();
+function checkRate(ip) {
+  const now = Date.now();
+  const entry = rateLimiter.get(ip) || { count: 0, reset: now + 60000 };
+  if (now > entry.reset) { entry.count = 0; entry.reset = now + 60000; }
+  entry.count++;
+  rateLimiter.set(ip, entry);
+  return entry.count <= 15;
+}
+// Clean stale entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimiter) {
+    if (now > entry.reset + 60000) rateLimiter.delete(ip);
+  }
+}, 300000);
+
+const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
+  ? ['https://indahl.ai', 'https://www.indahl.ai', 'https://indahl.onrender.com']
+  : ['http://localhost:3377', 'http://127.0.0.1:3377'];
+
 const server = http.createServer(async (req, res) => {
-  // CORS for web app
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -168,7 +191,19 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
+    res.writeHead(302, { Location: '/app' });
+    res.end();
+    return;
+  }
+
   if (req.method === 'POST' && req.url === '/chat') {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+    if (!checkRate(ip)) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Too many requests. Please slow down.' }));
+      return;
+    }
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
@@ -250,7 +285,7 @@ const server = http.createServer(async (req, res) => {
       } catch (err) {
         console.error('[error]', err.message);
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: 'Nora will be right back. Try again in a moment.' }));
       }
     });
     return;
@@ -349,38 +384,43 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && req.url === '/health') {
-    try {
-      const tags = await fetch(`${OLLAMA_URL}/api/tags`);
-      const tagData = await tags.json();
-      const models = tagData.models?.map(m => m.name) || [];
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'alive',
-        model: OLLAMA_MODEL,
-        modelsAvailable: models,
-        port: PORT,
-        platform: process.arch,
-        uptime: Math.floor(process.uptime()),
-        delta: {
-          flightState: delta.flightState,
-          mood: delta.mood,
-          hsl: delta.moodToHSL(),
-          sessions: delta.totalSessions,
-          messages: delta.totalMessages,
-          register: currentRegister,
-        },
-        dream: {
-          sessions: dreams.sessions.length,
-          patterns: dreams.patterns.length,
-          themes: dreams.themes.length,
-          lastDream: dreams.lastDream,
-          report: dreams.dreamReport(),
-        }
-      }));
-    } catch {
-      res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ollama-down' }));
+    let models = [];
+    let ollamaStatus = OLLAMA_URL ? 'unchecked' : 'not-configured';
+    if (OLLAMA_URL) {
+      try {
+        const tags = await fetch(`${OLLAMA_URL}/api/tags`);
+        const tagData = await tags.json();
+        models = tagData.models?.map(m => m.name) || [];
+        ollamaStatus = 'alive';
+      } catch {
+        ollamaStatus = 'down';
+      }
     }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'alive',
+      ollama: ollamaStatus,
+      model: OLLAMA_MODEL,
+      modelsAvailable: models,
+      port: PORT,
+      platform: process.arch,
+      uptime: Math.floor(process.uptime()),
+      delta: {
+        flightState: delta.flightState,
+        mood: delta.mood,
+        hsl: delta.moodToHSL(),
+        sessions: delta.totalSessions,
+        messages: delta.totalMessages,
+        register: currentRegister,
+      },
+      dream: {
+        sessions: dreams.sessions.length,
+        patterns: dreams.patterns.length,
+        themes: dreams.themes.length,
+        lastDream: dreams.lastDream,
+        report: dreams.dreamReport(),
+      }
+    }));
     return;
   }
 

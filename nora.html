@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Nora</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -10,20 +10,25 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: #ffffff;
   color: #1a1a1a;
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
+  gap: 1.75rem;
   padding: 2rem;
+  transition: background-color 3s ease;
+  -webkit-tap-highlight-color: transparent;
 }
+body.dark { color: #eee; }
 #status {
-  font-size: 24px;
-  color: #555;
-  min-height: 2rem;
+  font-size: 22px;
+  color: #666;
+  min-height: 1.8rem;
   text-align: center;
+  transition: color 0.5s;
 }
+body.dark #status { color: #aaa; }
 #btn-talk {
   background: #2563eb;
   color: white;
@@ -35,48 +40,108 @@ body {
   cursor: pointer;
   min-width: 260px;
   transition: background 0.2s, transform 0.1s;
-  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 #btn-talk:hover { background: #1d4ed8; }
 #btn-talk:active { transform: scale(0.97); }
 #btn-talk.listening { background: #dc2626; }
-#btn-talk.listening:hover { background: #b91c1c; }
+#btn-talk.thinking { background: #92400e; }
+#voiced-by { font-size: 13px; color: #aaa; }
+body.dark #voiced-by { color: #777; }
 #transcript {
-  font-size: 22px;
+  font-size: 20px;
   color: #333;
   text-align: center;
-  max-width: 600px;
-  min-height: 4rem;
+  max-width: 560px;
+  min-height: 3.5rem;
   line-height: 1.5;
 }
+body.dark #transcript { color: #ccc; }
+/* Text fallback for iOS/Safari */
+#text-mode {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 480px;
+}
+#text-input {
+  width: 100%;
+  font-size: 20px;
+  padding: 0.8rem 1rem;
+  border: 2px solid #ccc;
+  border-radius: 12px;
+  outline: none;
+  font-family: inherit;
+  background: white;
+  color: #1a1a1a;
+}
+#text-input:focus { border-color: #2563eb; }
+#text-send {
+  width: 100%;
+  font-size: 20px;
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  touch-action: manipulation;
+}
+#text-send:active { transform: scale(0.97); }
+body.dark #text-input { background: rgba(255,255,255,0.1); color: #eee; border-color: #555; }
 </style>
 </head>
 <body>
 
 <div id="status"></div>
 <button id="btn-talk">Talk to Nora</button>
-<div style="font-size:12px;color:#999;margin-top:0.5rem;">voiced by Cori</div>
+<div id="voiced-by">voiced by Cori</div>
+<div id="text-mode">
+  <input id="text-input" type="text" placeholder="Type something..." autocomplete="off" />
+  <button id="text-send">Send</button>
+</div>
 <div id="transcript"></div>
 
 <script>
-const COMPANION_URL = new URLSearchParams(location.search).get('url') || location.origin;
+const BASE_URL = location.origin;
 const CONTINUOUS = true;
 
+let started = false;
 let listening = false;
+let speaking = false;
 let recognition = null;
 let synth = window.speechSynthesis;
 let history = [];
+let speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
 const btn = document.getElementById('btn-talk');
-const status = document.getElementById('status');
-const transcript = document.getElementById('transcript');
+const statusEl = document.getElementById('status');
+const transcriptEl = document.getElementById('transcript');
+const textMode = document.getElementById('text-mode');
+const textInput = document.getElementById('text-input');
+const textSend = document.getElementById('text-send');
+
+// Show text fallback if speech not available (iOS Safari)
+if (!speechSupported) {
+  btn.style.display = 'none';
+  textMode.style.display = 'flex';
+  statusEl.textContent = 'Tap Send to start talking with Nora';
+}
+
+function applyHSL(hsl) {
+  if (!hsl) return;
+  const { h, s, l } = hsl;
+  document.body.style.backgroundColor = `hsl(${h}, ${s}%, ${l}%)`;
+  document.body.classList.toggle('dark', l < 45);
+}
 
 function setupRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    status.textContent = 'Voice not supported in this browser. Try Chrome or Safari.';
-    return null;
-  }
+  if (!SR) return null;
   const rec = new SR();
   rec.continuous = false;
   rec.interimResults = true;
@@ -86,7 +151,7 @@ function setupRecognition() {
     listening = true;
     btn.textContent = 'Stop';
     btn.classList.add('listening');
-    status.textContent = 'Listening...';
+    statusEl.textContent = 'Listening...';
   };
 
   rec.onresult = (event) => {
@@ -95,24 +160,24 @@ function setupRecognition() {
       if (event.results[i].isFinal) final += event.results[i][0].transcript;
       else interim += event.results[i][0].transcript;
     }
-    transcript.textContent = final || interim;
-    if (final) handleSpeech(final.trim());
+    transcriptEl.textContent = final || interim;
+    if (final) handleInput(final.trim());
   };
 
   rec.onerror = (event) => {
     if (event.error === 'no-speech') {
       if (CONTINUOUS && listening) startListening();
     } else {
-      status.textContent = '';
+      statusEl.textContent = '';
       listening = false;
       btn.textContent = 'Talk to Nora';
-      btn.classList.remove('listening');
+      btn.classList.remove('listening', 'thinking');
     }
   };
 
   rec.onend = () => {
     btn.classList.remove('listening');
-    if (CONTINUOUS && listening && !synth.speaking) startListening();
+    if (CONTINUOUS && listening && !speaking) startListening();
   };
 
   return rec;
@@ -121,43 +186,58 @@ function setupRecognition() {
 function startListening() {
   if (!recognition) recognition = setupRecognition();
   if (!recognition) return;
-  try { recognition.start(); } catch (e) { /* already running */ }
+  listening = true;
+  try { recognition.start(); } catch (e) {}
 }
 
 function stopListening() {
   listening = false;
   if (recognition) recognition.stop();
   btn.textContent = 'Talk to Nora';
-  btn.classList.remove('listening');
-  status.textContent = '';
+  btn.classList.remove('listening', 'thinking');
+  statusEl.textContent = '';
 }
 
-async function handleSpeech(text) {
+async function handleInput(text) {
+  if (!text.trim()) return;
   listening = false;
   if (recognition) recognition.stop();
-  status.textContent = 'Nora is thinking...';
-  transcript.textContent = text;
+  btn.classList.remove('listening');
+  btn.classList.add('thinking');
+  btn.textContent = 'Thinking...';
+  statusEl.textContent = 'Nora is thinking...';
+  transcriptEl.textContent = text;
+  textInput.value = '';
 
   history.push({ role: 'user', content: text });
 
   try {
-    const res = await fetch(`${COMPANION_URL}/chat`, {
+    const res = await fetch(`${BASE_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: history.slice(-20) })
     });
     const data = await res.json();
     history.push({ role: 'assistant', content: data.response });
+    applyHSL(data.hsl);
     speak(data.response);
   } catch (err) {
-    status.textContent = 'Having trouble connecting. Try again.';
-    transcript.textContent = '';
-    if (CONTINUOUS) setTimeout(startListening, 2000);
+    statusEl.textContent = 'Nora will be right back. Try again in a moment.';
+    transcriptEl.textContent = '';
+    btn.textContent = 'Talk to Nora';
+    btn.classList.remove('thinking');
+    if (CONTINUOUS && speechSupported) setTimeout(startListening, 2000);
   }
 }
 
 function speak(text) {
   synth.cancel();
+  speaking = true;
+  btn.textContent = 'Speaking...';
+  btn.classList.remove('thinking');
+  statusEl.textContent = '';
+  transcriptEl.textContent = text;
+
   const utter = new SpeechSynthesisUtterance(text);
   utter.rate = 0.9;
   utter.pitch = 1.0;
@@ -165,31 +245,90 @@ function speak(text) {
   const voices = synth.getVoices();
   const preferred = voices.find(v =>
     v.name.includes('Samantha') || v.name.includes('Karen') ||
-    v.name.includes('Google') || v.name.includes('Natural')
-  );
+    v.name.includes('Google UK English Female') ||
+    v.name.includes('Google US English') ||
+    (v.name.toLowerCase().includes('natural') && v.lang.startsWith('en'))
+  ) || voices.find(v => v.lang.startsWith('en'));
   if (preferred) utter.voice = preferred;
 
-  status.textContent = 'Nora is speaking...';
-  transcript.textContent = text;
-
   utter.onend = () => {
-    status.textContent = '';
-    if (CONTINUOUS) startListening();
+    speaking = false;
+    btn.textContent = 'Talk to Nora';
+    statusEl.textContent = '';
+    if (CONTINUOUS && speechSupported) startListening();
   };
   utter.onerror = () => {
-    if (CONTINUOUS) startListening();
+    speaking = false;
+    btn.textContent = 'Talk to Nora';
+    if (CONTINUOUS && speechSupported) startListening();
   };
 
   synth.speak(utter);
 }
 
+async function doGreeting() {
+  btn.classList.add('thinking');
+  btn.textContent = 'Thinking...';
+  statusEl.textContent = 'Nora is thinking...';
+  try {
+    const res = await fetch(`${BASE_URL}/greeting`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (data.response) {
+      history.push({ role: 'assistant', content: data.response });
+      applyHSL(data.hsl);
+      speak(data.response);
+    }
+  } catch (err) {
+    btn.textContent = 'Talk to Nora';
+    btn.classList.remove('thinking');
+    statusEl.textContent = '';
+  }
+}
+
 btn.addEventListener('click', () => {
-  if (listening) {
+  if (!started) {
+    started = true;
+    doGreeting();
+    return;
+  }
+  if (speaking) {
+    synth.cancel();
+    speaking = false;
+    btn.textContent = 'Talk to Nora';
+    statusEl.textContent = '';
+    startListening();
+  } else if (listening) {
     stopListening();
   } else {
     startListening();
   }
 });
+
+// Text mode send
+textSend.addEventListener('click', () => {
+  if (!started) started = true;
+  const text = textInput.value.trim();
+  if (text) handleInput(text);
+});
+textInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    if (!started) started = true;
+    const text = textInput.value.trim();
+    if (text) handleInput(text);
+  }
+});
+
+// Auto-greet on load for text mode (no button press needed for iOS)
+if (!speechSupported) {
+  window.addEventListener('load', () => {
+    started = true;
+    doGreeting();
+  });
+}
 
 synth.onvoiceschanged = () => synth.getVoices();
 </script>
