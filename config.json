@@ -1,0 +1,8 @@
+{
+  "ollamaUrl": "http://localhost:11434",
+  "ollamaModel": "phi3:mini",
+  "buddyWorkerUrl": "https://buddy-companion.kory-indahl.workers.dev",
+  "port": 3377,
+  "host": "0.0.0.0",
+  "register": "senior"
+}

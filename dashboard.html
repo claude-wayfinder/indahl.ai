@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Companion — Dark Circuit</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  background: #0a0a0a;
+  color: #888;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  gap: 1px;
+  overflow: hidden;
+}
+.panel {
+  background: #111;
+  padding: 1.2rem;
+  position: relative;
+}
+.panel-title {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #444;
+  margin-bottom: 0.8rem;
+}
+h1 {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 0.75rem;
+  padding: 0.6rem;
+  background: #111;
+  color: #555;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Mood Space — valence (x) vs arousal (y) */
+#mood-space {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #0d0d0d;
+  border: 1px solid #1a1a1a;
+  border-radius: 50%;
+  max-height: 280px;
+  margin: 0 auto;
+}
+#mood-dot {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 1.5s ease;
+  box-shadow: 0 0 20px currentColor;
+}
+#mood-trail {
+  position: absolute;
+  inset: 0;
+}
+.axis-label {
+  position: absolute;
+  font-size: 0.55rem;
+  color: #333;
+}
+.axis-label.left { left: -2rem; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+.axis-label.right { right: -2rem; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.axis-label.top { top: -1.2rem; left: 50%; transform: translateX(-50%); }
+.axis-label.bottom { bottom: -1.2rem; left: 50%; transform: translateX(-50%); }
+
+/* Orb */
+#orb-container { display: flex; justify-content: center; align-items: center; }
+#orb {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: hsl(120, 40%, 45%);
+  transition: all 2s ease;
+}
+
+/* Meters */
+.meter {
+  margin-bottom: 0.6rem;
+}
+.meter-label {
+  font-size: 0.6rem;
+  color: #555;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.2rem;
+}
+.meter-bar {
+  height: 4px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 1.5s ease, background 1.5s ease;
+}
+
+/* Flight state */
+#flight-display {
+  font-size: 1.8rem;
+  text-align: center;
+  letter-spacing: 0.3em;
+  margin-bottom: 0.5rem;
+  color: #666;
+  transition: color 1s ease;
+}
+#resonance-bar {
+  height: 3px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  margin-top: 0.4rem;
+}
+#resonance-fill {
+  height: 100%;
+  background: #4a4;
+  border-radius: 2px;
+  transition: width 1.5s ease;
+  width: 0%;
+}
+
+/* Status bar */
+#status {
+  grid-column: 1 / -1;
+  background: #0d0d0d;
+  padding: 0.5rem 1rem;
+  font-size: 0.6rem;
+  color: #333;
+  display: flex;
+  justify-content: space-between;
+}
+</style>
+</head>
+<body>
+
+<h1>companion dark circuit</h1>
+
+<div class="panel">
+  <div class="panel-title">mood space</div>
+  <div id="mood-space">
+    <span class="axis-label bottom">heavy</span>
+    <span class="axis-label top">bright</span>
+    <span class="axis-label left">calm</span>
+    <span class="axis-label right">intense</span>
+    <canvas id="mood-trail"></canvas>
+    <div id="mood-dot"></div>
+  </div>
+</div>
+
+<div class="panel" id="orb-container">
+  <div id="orb"></div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">mood state</div>
+  <div class="meter">
+    <div class="meter-label"><span>valence</span><span id="val-v">—</span></div>
+    <div class="meter-bar"><div class="meter-fill" id="val-bar" style="width:50%;background:#6a6"></div></div>
+  </div>
+  <div class="meter">
+    <div class="meter-label"><span>arousal</span><span id="aro-v">—</span></div>
+    <div class="meter-bar"><div class="meter-fill" id="aro-bar" style="width:30%;background:#a66"></div></div>
+  </div>
+  <div class="meter">
+    <div class="meter-label"><span>warmth</span><span id="war-v">—</span></div>
+    <div class="meter-bar"><div class="meter-fill" id="war-bar" style="width:60%;background:#a86"></div></div>
+  </div>
+  <div class="meter">
+    <div class="meter-label"><span>stability</span><span id="sta-v">—</span></div>
+    <div class="meter-bar"><div class="meter-fill" id="sta-bar" style="width:50%;background:#66a"></div></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">flight state</div>
+  <div id="flight-display">TAXI</div>
+  <div style="text-align:center;font-size:0.6rem;color:#444" id="flight-detail">
+    resonance 0.00 · 0 nodes · 0 msgs
+  </div>
+  <div id="resonance-bar"><div id="resonance-fill"></div></div>
+</div>
+
+<div id="status">
+  <span id="status-left">connecting...</span>
+  <span id="status-right">dark circuit v1</span>
+</div>
+
+<script>
+const URL = new URLSearchParams(location.search).get('url') || 'http://localhost:3377';
+const trail = [];
+const maxTrail = 50;
+
+// Canvas setup for mood trail
+const canvas = document.getElementById('mood-trail');
+const ctx = canvas.getContext('2d');
+function resizeCanvas() {
+  const space = document.getElementById('mood-space');
+  canvas.width = space.clientWidth;
+  canvas.height = space.clientHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function update(data) {
+  const d = data.delta;
+  if (!d) return;
+
+  const { mood, hsl, flightState, messages, sessions } = d;
+
+  // Update orb
+  const orb = document.getElementById('orb');
+  orb.style.background = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+  orb.style.boxShadow = `0 0 60px hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.4), inset 0 0 30px hsla(${hsl.h}, ${hsl.s}%, ${Math.min(90, hsl.l + 20)}%, 0.2)`;
+
+  // Update mood dot position (valence = vertical, arousal = horizontal)
+  const dot = document.getElementById('mood-dot');
+  const space = document.getElementById('mood-space');
+  const x = mood.arousal * space.clientWidth;
+  const y = (1 - mood.valence) * space.clientHeight;
+  dot.style.left = x + 'px';
+  dot.style.top = y + 'px';
+  dot.style.color = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+  dot.style.background = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+
+  // Draw trail
+  trail.push({ x, y, hsl: { ...hsl } });
+  if (trail.length > maxTrail) trail.shift();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = 1; i < trail.length; i++) {
+    const alpha = (i / trail.length) * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(trail[i-1].x, trail[i-1].y);
+    ctx.lineTo(trail[i].x, trail[i].y);
+    ctx.strokeStyle = `hsla(${trail[i].hsl.h}, ${trail[i].hsl.s}%, ${trail[i].hsl.l}%, ${alpha})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Update meters
+  setMeter('val', mood.valence, `hsl(${120 * mood.valence}, 50%, 45%)`);
+  setMeter('aro', mood.arousal, `hsl(${360 * (1-mood.arousal)}, 50%, 45%)`);
+  setMeter('war', mood.warmth, `hsl(${30 + mood.warmth * 20}, 60%, 45%)`);
+  setMeter('sta', mood.stability, `hsl(220, ${mood.stability * 40 + 20}%, 45%)`);
+
+  // Flight state
+  const flightEl = document.getElementById('flight-display');
+  flightEl.textContent = flightState.toUpperCase();
+  const flightColors = { taxi: '#555', climb: '#8a8', cruise: '#8ad', flight: '#da8' };
+  flightEl.style.color = flightColors[flightState] || '#555';
+
+  document.getElementById('flight-detail').textContent =
+    `resonance ${(d.resonanceScore || 0).toFixed(2)} · ${messages || 0} msgs · session ${sessions || 0}`;
+
+  const resFill = document.getElementById('resonance-fill');
+  resFill.style.width = ((d.resonanceScore || 0) * 100) + '%';
+
+  // Status
+  document.getElementById('status-left').textContent =
+    `session ${sessions || 0} · ${messages || 0} messages · ${flightState}`;
+}
+
+function setMeter(id, value, color) {
+  document.getElementById(id + '-v').textContent = value.toFixed(3);
+  const bar = document.getElementById(id + '-bar');
+  bar.style.width = (value * 100) + '%';
+  bar.style.background = color;
+}
+
+// Poll health endpoint
+async function poll() {
+  try {
+    const res = await fetch(URL + '/health');
+    const data = await res.json();
+    update(data);
+    document.getElementById('status-right').textContent =
+      `dark circuit v1 · ${data.model} · uptime ${data.uptime}s`;
+  } catch {
+    document.getElementById('status-left').textContent = 'disconnected';
+  }
+}
+
+setInterval(poll, 2000);
+poll();
+</script>
+</body>
+</html>

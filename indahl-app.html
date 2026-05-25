@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Nora</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #ffffff;
+  color: #222;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+#main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  padding: 2rem;
+}
+#talk-btn {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: 3px solid #333;
+  background: #fafafa;
+  color: #222;
+  font-size: 26px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  line-height: 1.3;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+#talk-btn:hover {
+  background: #f0f0f0;
+  border-color: #111;
+}
+#talk-btn:active {
+  transform: scale(0.97);
+}
+#talk-btn.listening {
+  border-color: #2a7;
+  background: #eafaf0;
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+#talk-btn.speaking {
+  border-color: #57a;
+  background: #eef0fa;
+}
+#talk-btn.thinking {
+  border-color: #a80;
+  background: #fdf8ee;
+}
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(42,119,80,0.25); }
+  50% { box-shadow: 0 0 0 18px rgba(42,119,80,0); }
+}
+#voiced-by {
+  margin-top: 1rem;
+  font-size: 15px;
+  color: #999;
+  letter-spacing: 0.03em;
+}
+#status {
+  margin-top: 2rem;
+  font-size: 24px;
+  color: #666;
+  min-height: 2rem;
+  text-align: center;
+  transition: color 0.5s ease;
+}
+#transcript {
+  margin-top: 1.5rem;
+  font-size: 20px;
+  color: #444;
+  max-width: 85%;
+  text-align: center;
+  line-height: 1.5;
+  min-height: 3rem;
+}
+/* Adapt text color when background goes dark */
+body.dark-bg { color: #eee; }
+body.dark-bg #talk-btn { background: rgba(255,255,255,0.12); border-color: #ccc; color: #eee; }
+body.dark-bg #talk-btn.listening { background: rgba(42,119,80,0.2); border-color: #5cb; }
+body.dark-bg #talk-btn.speaking { background: rgba(87,112,170,0.2); border-color: #8af; }
+body.dark-bg #talk-btn.thinking { background: rgba(170,128,0,0.2); border-color: #da5; }
+body.dark-bg #voiced-by { color: #888; }
+body.dark-bg #status { color: #aaa; }
+body.dark-bg #transcript { color: #ccc; }
+</style>
+</head>
+<body>
+
+<div id="main">
+  <button id="talk-btn">Talk to<br>Nora</button>
+  <div id="voiced-by">voiced by Cori</div>
+  <div id="status"></div>
+  <div id="transcript"></div>
+</div>
+
+<script>
+// === CONFIG ===
+const BASE_URL = location.origin;
+const VOICE_NAME = 'cori';
+const MAX_HISTORY = 20;
+
+// === STATE ===
+let started = false;
+let listening = false;
+let speaking = false;
+let recognition = null;
+let synth = window.speechSynthesis;
+let history = [];
+let voicesLoaded = false;
+
+const btn = document.getElementById('talk-btn');
+const statusEl = document.getElementById('status');
+const transcriptEl = document.getElementById('transcript');
+
+// === HSL BACKGROUND ===
+function applyHSL(hsl) {
+  if (!hsl) return;
+  const { h, s, l } = hsl;
+  document.body.style.backgroundColor = `hsl(${h}, ${s}%, ${l}%)`;
+  // Toggle dark-bg class for text readability
+  if (l < 45) {
+    document.body.classList.add('dark-bg');
+  } else {
+    document.body.classList.remove('dark-bg');
+  }
+}
+
+// === SPEECH RECOGNITION ===
+function createRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    statusEl.textContent = 'Speech not supported in this browser';
+    return null;
+  }
+  const rec = new SR();
+  rec.continuous = false;
+  rec.interimResults = true;
+  rec.lang = 'en-US';
+
+  rec.onstart = () => {
+    listening = true;
+    btn.className = 'listening';
+    statusEl.textContent = 'Listening...';
+  };
+
+  rec.onresult = (event) => {
+    let final = '';
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        final += event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    transcriptEl.textContent = final || interim;
+    if (final) {
+      handleUserSpeech(final.trim());
+    }
+  };
+
+  rec.onerror = (event) => {
+    if (event.error === 'no-speech') {
+      // Silence timeout -- restart listening
+      if (listening) startListening();
+    } else if (event.error === 'aborted') {
+      // Intentional stop, do nothing
+    } else {
+      statusEl.textContent = '';
+      listening = false;
+      btn.className = '';
+    }
+  };
+
+  rec.onend = () => {
+    if (listening && !speaking) {
+      startListening();
+    } else {
+      btn.className = speaking ? 'speaking' : '';
+    }
+  };
+
+  return rec;
+}
+
+function startListening() {
+  if (!recognition) recognition = createRecognition();
+  if (!recognition) return;
+  listening = true;
+  try {
+    recognition.start();
+  } catch (e) {
+    // already started
+  }
+}
+
+function stopListening() {
+  listening = false;
+  if (recognition) {
+    try { recognition.stop(); } catch (e) {}
+  }
+}
+
+// === COMPANION API ===
+async function sendToCompanion(messages) {
+  const res = await fetch(`${BASE_URL}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages })
+  });
+  return res.json();
+}
+
+async function fetchGreeting() {
+  const res = await fetch(`${BASE_URL}/greeting`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({})
+  });
+  return res.json();
+}
+
+async function handleUserSpeech(text) {
+  listening = false;
+  stopListening();
+
+  btn.className = 'thinking';
+  statusEl.textContent = 'Nora is thinking...';
+  transcriptEl.textContent = '"' + text + '"';
+
+  history.push({ role: 'user', content: text });
+
+  try {
+    const data = await sendToCompanion(history.slice(-MAX_HISTORY));
+    history.push({ role: 'assistant', content: data.response });
+    applyHSL(data.hsl);
+    speak(data.response);
+  } catch (err) {
+    statusEl.textContent = '';
+    transcriptEl.textContent = 'Could not reach Nora. Is the server running?';
+    btn.className = '';
+    // Retry listening after a pause
+    setTimeout(startListening, 3000);
+  }
+}
+
+// === TEXT-TO-SPEECH ===
+function pickVoice() {
+  const voices = synth.getVoices();
+  if (!voices.length) return null;
+
+  // Try to find a Cori-like voice: prefer natural/female voices
+  const preferred = [
+    v => v.name.toLowerCase().includes('cori'),
+    v => v.name.toLowerCase().includes('samantha'),
+    v => v.name.includes('Google UK English Female'),
+    v => v.name.includes('Google US English'),
+    v => v.name.toLowerCase().includes('natural') && v.lang.startsWith('en'),
+    v => v.name.toLowerCase().includes('female') && v.lang.startsWith('en'),
+    v => v.lang.startsWith('en'),
+  ];
+  for (const test of preferred) {
+    const match = voices.find(test);
+    if (match) return match;
+  }
+  return voices[0];
+}
+
+function speak(text) {
+  synth.cancel();
+  speaking = true;
+  btn.className = 'speaking';
+  statusEl.textContent = '';
+  transcriptEl.textContent = text;
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 0.95;
+  utter.pitch = 1.0;
+  const voice = pickVoice();
+  if (voice) utter.voice = voice;
+
+  utter.onend = () => {
+    speaking = false;
+    btn.className = '';
+    statusEl.textContent = '';
+    startListening();
+  };
+
+  utter.onerror = () => {
+    speaking = false;
+    btn.className = '';
+    statusEl.textContent = '';
+    startListening();
+  };
+
+  synth.speak(utter);
+}
+
+// === BUTTON ===
+btn.addEventListener('click', () => {
+  if (!started) {
+    started = true;
+    // First tap: fetch greeting and have Nora speak first
+    btn.className = 'thinking';
+    statusEl.textContent = 'Nora is thinking...';
+    doGreeting();
+    return;
+  }
+
+  // Subsequent taps toggle listening
+  if (speaking) {
+    synth.cancel();
+    speaking = false;
+    btn.className = '';
+    statusEl.textContent = '';
+    startListening();
+  } else if (listening) {
+    stopListening();
+    btn.className = '';
+    statusEl.textContent = '';
+  } else {
+    startListening();
+  }
+});
+
+// === GREETING (Nora speaks first) ===
+async function doGreeting() {
+  try {
+    const data = await fetchGreeting();
+    if (data.response) {
+      history.push({ role: 'assistant', content: data.response });
+      applyHSL(data.hsl);
+      speak(data.response);
+    } else {
+      // Fallback: send a hello through normal chat
+      history.push({ role: 'user', content: 'hello' });
+      const fallback = await sendToCompanion(history.slice(-MAX_HISTORY));
+      history.push({ role: 'assistant', content: fallback.response });
+      // Replace the synthetic "hello" so Nora doesn't think the user said hello
+      history.shift();
+      applyHSL(fallback.hsl);
+      speak(fallback.response);
+    }
+  } catch (err) {
+    statusEl.textContent = '';
+    transcriptEl.textContent = 'Could not reach Nora. Is the server running?';
+    btn.className = '';
+    started = false;
+  }
+}
+
+// === INIT ===
+// Preload voices
+synth.onvoiceschanged = () => {
+  voicesLoaded = true;
+  synth.getVoices();
+};
+// Some browsers fire it immediately
+if (synth.getVoices().length) voicesLoaded = true;
+</script>
+</body>
+</html>

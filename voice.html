@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Companion Voice Bridge</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #111;
+  color: #eee;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#orb {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: hsl(30, 60%, 20%);
+  transition: background 1.5s ease;
+  box-shadow: 0 0 60px hsla(30, 60%, 30%, 0.4);
+  margin-bottom: 2rem;
+}
+#orb.listening {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+#orb.speaking {
+  animation: glow 0.8s ease-in-out infinite alternate;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+@keyframes glow {
+  from { box-shadow: 0 0 60px hsla(var(--hue, 30), 60%, 40%, 0.4); }
+  to { box-shadow: 0 0 100px hsla(var(--hue, 30), 80%, 50%, 0.6); }
+}
+#status {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 1rem;
+}
+#transcript {
+  max-width: 80%;
+  text-align: center;
+  font-size: 1.1rem;
+  min-height: 3rem;
+  color: #aaa;
+}
+#controls {
+  position: fixed;
+  bottom: 2rem;
+  display: flex;
+  gap: 1rem;
+}
+button {
+  background: #222;
+  border: 1px solid #444;
+  color: #eee;
+  padding: 0.8rem 1.5rem;
+  border-radius: 2rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+button:hover { background: #333; }
+button.active { border-color: #4f8; background: #1a2e1a; }
+#config {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  font-size: 0.75rem;
+  color: #444;
+}
+</style>
+</head>
+<body>
+
+<div id="orb"></div>
+<div id="status">tap to start</div>
+<div id="transcript"></div>
+
+<div id="controls">
+  <button id="btn-start">Start Listening</button>
+  <button id="btn-mute">Mute</button>
+</div>
+
+<div id="config">
+  <span id="cfg-endpoint"></span>
+</div>
+
+<script>
+// === CONFIG ===
+const COMPANION_URL = new URLSearchParams(location.search).get('url') || 'http://localhost:3377';
+const VOICE_NAME = new URLSearchParams(location.search).get('voice') || ''; // system default
+const CONTINUOUS = true; // keep listening after each response
+
+document.getElementById('cfg-endpoint').textContent = COMPANION_URL;
+
+// === STATE ===
+let listening = false;
+let muted = false;
+let recognition = null;
+let synth = window.speechSynthesis;
+let history = [];
+const orb = document.getElementById('orb');
+const status = document.getElementById('status');
+const transcript = document.getElementById('transcript');
+
+// === SPEECH RECOGNITION ===
+function setupRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    status.textContent = 'Speech recognition not supported in this browser';
+    return null;
+  }
+
+  const rec = new SpeechRecognition();
+  rec.continuous = false;
+  rec.interimResults = true;
+  rec.lang = 'en-US';
+
+  rec.onstart = () => {
+    listening = true;
+    orb.classList.add('listening');
+    orb.classList.remove('speaking');
+    status.textContent = 'listening...';
+  };
+
+  rec.onresult = (event) => {
+    let final = '';
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        final += event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    transcript.textContent = final || interim;
+    if (final) {
+      handleUserSpeech(final.trim());
+    }
+  };
+
+  rec.onerror = (event) => {
+    if (event.error === 'no-speech') {
+      // Silence — restart if continuous
+      if (CONTINUOUS && listening) startListening();
+    } else {
+      status.textContent = `error: ${event.error}`;
+      listening = false;
+      orb.classList.remove('listening');
+    }
+  };
+
+  rec.onend = () => {
+    orb.classList.remove('listening');
+    if (CONTINUOUS && listening && !synth.speaking) {
+      startListening();
+    }
+  };
+
+  return rec;
+}
+
+function startListening() {
+  if (!recognition) recognition = setupRecognition();
+  if (!recognition) return;
+  try {
+    recognition.start();
+  } catch (e) {
+    // already started — ignore
+  }
+}
+
+function stopListening() {
+  listening = false;
+  if (recognition) recognition.stop();
+  orb.classList.remove('listening');
+  status.textContent = 'stopped';
+}
+
+// === COMPANION API ===
+async function handleUserSpeech(text) {
+  listening = false;
+  if (recognition) recognition.stop();
+
+  status.textContent = 'thinking...';
+  transcript.textContent = `"${text}"`;
+
+  history.push({ role: 'user', content: text });
+
+  try {
+    const res = await fetch(`${COMPANION_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history.slice(-20) })
+    });
+    const data = await res.json();
+
+    history.push({ role: 'assistant', content: data.response });
+
+    // Update orb color
+    if (data.hsl) {
+      const { h, s, l } = data.hsl;
+      orb.style.background = `hsl(${h}, ${s}%, ${l}%)`;
+      orb.style.boxShadow = `0 0 60px hsla(${h}, ${s}%, ${l}%, 0.4)`;
+      orb.style.setProperty('--hue', h);
+    }
+
+    // Speak the response
+    speak(data.response);
+
+  } catch (err) {
+    status.textContent = `error: ${err.message}`;
+    transcript.textContent = 'Connection failed — is companion-local running?';
+    if (CONTINUOUS) setTimeout(startListening, 2000);
+  }
+}
+
+// === TEXT-TO-SPEECH ===
+function speak(text) {
+  if (muted) {
+    status.textContent = 'muted';
+    if (CONTINUOUS) startListening();
+    return;
+  }
+
+  synth.cancel(); // stop any pending speech
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.0;
+  utter.pitch = 1.0;
+
+  // Try to find a good voice
+  const voices = synth.getVoices();
+  if (VOICE_NAME) {
+    const match = voices.find(v => v.name.toLowerCase().includes(VOICE_NAME.toLowerCase()));
+    if (match) utter.voice = match;
+  } else {
+    // Prefer a natural-sounding voice
+    const preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Google') || v.name.includes('Natural'));
+    if (preferred) utter.voice = preferred;
+  }
+
+  orb.classList.add('speaking');
+  status.textContent = 'speaking...';
+  transcript.textContent = text;
+
+  utter.onend = () => {
+    orb.classList.remove('speaking');
+    status.textContent = 'ready';
+    if (CONTINUOUS) startListening();
+  };
+
+  utter.onerror = () => {
+    orb.classList.remove('speaking');
+    if (CONTINUOUS) startListening();
+  };
+
+  synth.speak(utter);
+}
+
+// === CONTROLS ===
+document.getElementById('btn-start').addEventListener('click', () => {
+  const btn = document.getElementById('btn-start');
+  if (listening) {
+    stopListening();
+    btn.textContent = 'Start Listening';
+    btn.classList.remove('active');
+  } else {
+    startListening();
+    btn.textContent = 'Stop';
+    btn.classList.add('active');
+  }
+});
+
+document.getElementById('btn-mute').addEventListener('click', () => {
+  muted = !muted;
+  const btn = document.getElementById('btn-mute');
+  btn.textContent = muted ? 'Unmute' : 'Mute';
+  btn.classList.toggle('active', muted);
+});
+
+// Load voices (some browsers need this)
+synth.onvoiceschanged = () => synth.getVoices();
+
+// === INIT ===
+status.textContent = `tap Start — connects to ${COMPANION_URL}`;
+</script>
+</body>
+</html>

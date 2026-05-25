@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Companion — Live Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* Default: Adult mode */
+  --bg: #0a0a0a;
+  --bg-panel: #111;
+  --bg-input: #151515;
+  --border: #1a1a1a;
+  --text: #ccc;
+  --text-dim: #555;
+  --text-dimmer: #444;
+  --text-dimmest: #333;
+  --msg-user-bg: #1a2a1a;
+  --msg-user-text: #adc;
+  --msg-comp-bg: #1a1a2a;
+  --msg-comp-text: #ccc;
+  --orb-glow: 0.3;
+  --transition-speed: 2s;
+  --font-size: 0.9rem;
+  --font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  --border-radius: 1rem;
+  --input-radius: 1.5rem;
+  --mode-accent: #3a3a3a;
+}
+
+/* === THERAPIST MODE === */
+body.mode-therapist {
+  --bg: #0f110f;
+  --bg-panel: #141814;
+  --bg-input: #181c18;
+  --border: #1e261e;
+  --text: #c8ccbf;
+  --text-dim: #6b7363;
+  --text-dimmer: #4a5242;
+  --text-dimmest: #333b2e;
+  --msg-user-bg: #1c231a;
+  --msg-user-text: #b5c4a0;
+  --msg-comp-bg: #1a1e1a;
+  --msg-comp-text: #c8ccbf;
+  --orb-glow: 0.2;
+  --transition-speed: 3.5s;
+  --font-size: 0.95rem;
+  --border-radius: 1.2rem;
+  --input-radius: 1.2rem;
+  --mode-accent: #3d4a32;
+}
+
+/* === KID MODE === */
+body.mode-child {
+  --bg: #0c0c14;
+  --bg-panel: #12121e;
+  --bg-input: #18182a;
+  --border: #252540;
+  --text: #e0e0f0;
+  --text-dim: #7070a0;
+  --text-dimmer: #5050a0;
+  --text-dimmest: #3a3a6a;
+  --msg-user-bg: #1a2a3a;
+  --msg-user-text: #a0d8f0;
+  --msg-comp-bg: #2a1a3a;
+  --msg-comp-text: #e8d0f8;
+  --orb-glow: 0.45;
+  --transition-speed: 1.2s;
+  --font-size: 1.05rem;
+  --font-family: 'Nunito', 'Comic Neue', -apple-system, sans-serif;
+  --border-radius: 1.5rem;
+  --input-radius: 2rem;
+  --mode-accent: #5050a0;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  transition: background 0.8s ease, color 0.8s ease;
+}
+@media (max-width: 600px) {
+  body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .viz-side { display: none; }
+  .talk-side { height: 100vh; }
+  #input-area { padding: 0.5rem; position: sticky; bottom: 0; background: var(--bg); }
+  #input-area input { font-size: 16px; }
+  .msg { font-size: 0.95rem; max-width: 90%; }
+}
+
+/* Left: conversation */
+.talk-side {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+}
+.talk-header {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 0.7rem;
+  color: var(--text-dimmer);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+#chat-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+.msg {
+  margin-bottom: 0.8rem;
+  max-width: 85%;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--border-radius);
+  font-size: var(--font-size);
+  line-height: 1.5;
+  animation: fadeIn 0.3s ease;
+  transition: background 0.5s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+.msg.user {
+  background: var(--msg-user-bg);
+  color: var(--msg-user-text);
+  margin-left: auto;
+  border-bottom-right-radius: 0.3rem;
+}
+.msg.companion {
+  background: var(--msg-comp-bg);
+  color: var(--msg-comp-text);
+  border-bottom-left-radius: 0.3rem;
+}
+.msg .meta {
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+}
+#input-area {
+  display: flex;
+  padding: 0.8rem;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+#input-area input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.6rem 1rem;
+  border-radius: var(--input-radius);
+  font-size: var(--font-size);
+  font-family: var(--font-family);
+  outline: none;
+  transition: border-color 0.3s, background 0.5s;
+}
+#input-area input:focus { border-color: var(--mode-accent); }
+#btn-mic {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+#btn-mic.active { background: #2a1a1a; border-color: #a44; color: #f88; }
+
+/* Mode selector */
+.mode-selector {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.mode-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: none;
+  background: var(--bg-panel);
+  color: var(--text-dimmest);
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+.mode-btn:hover { color: var(--text-dim); }
+.mode-btn.active {
+  background: var(--mode-accent);
+  color: var(--text);
+}
+
+/* Right: dark circuit viz */
+.viz-side {
+  display: grid;
+  grid-template-rows: auto 1fr 1fr auto;
+  gap: 1px;
+  background: var(--bg);
+}
+.viz-header {
+  padding: 0.8rem;
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-dimmer);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: var(--bg-panel);
+}
+
+/* Orb panel */
+.orb-panel {
+  background: var(--bg-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+#orb {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  transition: all var(--transition-speed) ease;
+  background: hsl(120, 40%, 40%);
+}
+
+/* Therapist orb: smaller, more intimate */
+body.mode-therapist #orb {
+  width: 140px;
+  height: 140px;
+}
+
+/* Kid orb: bigger, bouncier */
+body.mode-child #orb {
+  width: 200px;
+  height: 200px;
+  animation: breathe-kid 3s ease-in-out infinite;
+}
+@keyframes breathe-kid {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+/* Therapist orb: slow breathe */
+body.mode-therapist #orb {
+  animation: breathe-calm 6s ease-in-out infinite;
+}
+@keyframes breathe-calm {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+#flight-badge {
+  position: absolute;
+  bottom: 0.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* Meters panel */
+.meters-panel {
+  background: var(--bg-panel);
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.meter {
+  margin-bottom: 0.8rem;
+}
+.meter-label {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+.meter-bar {
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width var(--transition-speed) ease, background var(--transition-speed) ease;
+}
+
+/* Status bar */
+.status-bar {
+  grid-column: 1 / -1;
+  background: var(--bg);
+  padding: 0.4rem 1rem;
+  font-size: 0.55rem;
+  color: var(--text-dimmest);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Therapist: rename meters to feelings */
+body.mode-therapist .meter-label { font-size: 0.55rem; }
+
+/* Kid: chunkier meters */
+body.mode-child .meter-bar { height: 10px; border-radius: 5px; }
+body.mode-child .meter-fill { border-radius: 5px; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- LEFT: Talk -->
+<div class="talk-side">
+  <div class="talk-header">
+    <span id="header-label">companion</span>
+    <div class="mode-selector">
+      <button class="mode-btn active" data-mode="adult">adult</button>
+      <button class="mode-btn" data-mode="therapist">therapist</button>
+      <button class="mode-btn" data-mode="child">kid</button>
+    </div>
+  </div>
+  <div id="chat-log"></div>
+  <div id="input-area">
+    <input type="text" id="text-input" placeholder="say something..." autocomplete="off" />
+    <button id="btn-mic" title="Hold to speak">&#127908;</button>
+  </div>
+</div>
+
+<!-- RIGHT: Dark Circuit -->
+<div class="viz-side">
+  <div class="viz-header" id="viz-label">dark circuit</div>
+
+  <div class="orb-panel">
+    <div id="orb"></div>
+    <div id="flight-badge">taxi</div>
+  </div>
+
+  <div class="meters-panel">
+    <div class="meter">
+      <div class="meter-label"><span class="meter-name" data-adult="valence" data-therapist="feeling" data-child="vibes">valence</span><span id="val-v">—</span></div>
+      <div class="meter-bar"><div class="meter-fill" id="val-bar" style="width:50%"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-label"><span class="meter-name" data-adult="arousal" data-therapist="energy" data-child="hype">arousal</span><span id="aro-v">—</span></div>
+      <div class="meter-bar"><div class="meter-fill" id="aro-bar" style="width:30%"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-label"><span class="meter-name" data-adult="warmth" data-therapist="warmth" data-child="cozy">warmth</span><span id="war-v">—</span></div>
+      <div class="meter-bar"><div class="meter-fill" id="war-bar" style="width:60%"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-label"><span class="meter-name" data-adult="stability" data-therapist="grounding" data-child="chill">stability</span><span id="sta-v">—</span></div>
+      <div class="meter-bar"><div class="meter-fill" id="sta-bar" style="width:50%"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:3377';
+const chatLog = document.getElementById('chat-log');
+const textInput = document.getElementById('text-input');
+const micBtn = document.getElementById('btn-mic');
+const history = [];
+let speaking = false;
+let currentMode = 'adult';
+const synth = window.speechSynthesis;
+
+const MODE_CONFIG = {
+  adult: {
+    label: 'companion',
+    vizLabel: 'dark circuit',
+    placeholder: 'say something...',
+    greeting: null,
+  },
+  therapist: {
+    label: 'companion — therapeutic',
+    vizLabel: 'emotional field',
+    placeholder: 'take your time...',
+    greeting: "I'm here whenever you're ready.",
+  },
+  child: {
+    label: 'companion — explorer mode',
+    vizLabel: 'mood radar',
+    placeholder: 'what\'s up?? 🐙',
+    greeting: "Heyyy! What are we doing today?",
+  },
+};
+
+// === MODE SWITCHING ===
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const mode = btn.dataset.mode;
+    if (mode === currentMode) return;
+
+    // Update server
+    try {
+      await fetch(API + '/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode })
+      });
+    } catch {}
+
+    // Update UI
+    currentMode = mode;
+    document.body.className = 'mode-' + mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const cfg = MODE_CONFIG[mode];
+    document.getElementById('header-label').textContent = cfg.label;
+    document.getElementById('viz-label').textContent = cfg.vizLabel;
+    textInput.placeholder = cfg.placeholder;
+
+    // Update meter names
+    document.querySelectorAll('.meter-name').forEach(el => {
+      el.textContent = el.dataset[mode] || el.dataset.adult;
+    });
+
+    // Clear chat and show greeting
+    chatLog.innerHTML = '';
+    history.length = 0;
+    if (cfg.greeting) {
+      addMessage('companion', cfg.greeting);
+    }
+
+    textInput.focus();
+  });
+});
+
+// === CHAT ===
+
+async function send(text) {
+  if (!text.trim()) return;
+  addMessage('user', text);
+  history.push({ role: 'user', content: text });
+
+  try {
+    const res = await fetch(API + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history.slice(-20) })
+    });
+    const data = await res.json();
+
+    addMessage('companion', data.response, data);
+    history.push({ role: 'assistant', content: data.response });
+    updateViz(data);
+    speak(data.response);
+
+  } catch (err) {
+    addMessage('companion', 'Connection lost — is the server running?');
+  }
+}
+
+function addMessage(role, text, data) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  let html = text;
+  if (data) {
+    const layer = data.layer === 'DEPTH' ? 'deep' : 'local';
+    const flight = data.flight || '?';
+    html += `<div class="meta">${layer} · ${data.model} · ${flight}</div>`;
+  }
+  div.innerHTML = html;
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// === VOICE ===
+
+async function speak(text) {
+  try {
+    const res = await fetch(API + '/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      speaking = true;
+      audio.onended = () => { speaking = false; URL.revokeObjectURL(url); };
+      audio.play();
+      return;
+    }
+  } catch {}
+  if (!synth) return;
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  // Therapist: slower, lower pitch. Kid: faster, higher
+  if (currentMode === 'therapist') {
+    utter.rate = 0.85;
+    utter.pitch = 0.9;
+  } else if (currentMode === 'child') {
+    utter.rate = 1.1;
+    utter.pitch = 1.15;
+  } else {
+    utter.rate = 1.0;
+  }
+  const voices = synth.getVoices();
+  const good = voices.find(v => v.name.includes('Samantha') || v.name.includes('Google') || v.name.includes('Natural'));
+  if (good) utter.voice = good;
+  speaking = true;
+  utter.onend = () => { speaking = false; };
+  synth.speak(utter);
+}
+
+// Speech recognition
+let recognition = null;
+try {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SR) {
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognition.onresult = (e) => {
+      const text = e.results[0][0].transcript;
+      textInput.value = '';
+      send(text);
+    };
+    recognition.onend = () => { micBtn.classList.remove('active'); };
+    recognition.onerror = () => { micBtn.classList.remove('active'); };
+  }
+} catch {}
+
+micBtn.addEventListener('click', () => {
+  if (!recognition) return;
+  if (micBtn.classList.contains('active')) {
+    recognition.stop();
+  } else {
+    micBtn.classList.add('active');
+    recognition.start();
+  }
+});
+
+textInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    send(textInput.value);
+    textInput.value = '';
+  }
+});
+
+// === VIZ UPDATE ===
+
+function updateViz(data) {
+  if (!data.hsl) return;
+  const { h, s, l } = data.hsl;
+  const glowAlpha = parseFloat(getComputedStyle(document.body).getPropertyValue('--orb-glow')) || 0.3;
+
+  const orb = document.getElementById('orb');
+  orb.style.background = `hsl(${h}, ${s}%, ${l}%)`;
+  orb.style.boxShadow = `0 0 80px hsla(${h}, ${s}%, ${l}%, ${glowAlpha}), 0 0 40px hsla(${h}, ${s}%, ${l}%, ${glowAlpha * 0.7})`;
+
+  const badge = document.getElementById('flight-badge');
+  badge.textContent = data.flight || 'taxi';
+  const colors = { taxi: '#555', climb: '#8a8', cruise: '#8ad', flight: '#da8' };
+  badge.style.color = colors[data.flight] || '#555';
+}
+
+// Poll health for mood meters
+async function pollHealth() {
+  try {
+    const res = await fetch(API + '/health');
+    const data = await res.json();
+    if (data.delta) {
+      const m = data.delta.mood;
+      const hsl = data.delta.hsl;
+      setMeter('val', m.valence, `hsl(${120 * m.valence}, 50%, 45%)`);
+      setMeter('aro', m.arousal, `hsl(${360 * (1-m.arousal)}, 50%, 45%)`);
+      setMeter('war', m.warmth, `hsl(${30 + m.warmth * 20}, 60%, 45%)`);
+      setMeter('sta', m.stability, `hsl(220, ${m.stability * 40 + 20}%, 45%)`);
+
+      if (hsl) {
+        const orb = document.getElementById('orb');
+        const glowAlpha = parseFloat(getComputedStyle(document.body).getPropertyValue('--orb-glow')) || 0.3;
+        orb.style.background = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+        orb.style.boxShadow = `0 0 80px hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, ${glowAlpha})`;
+      }
+    }
+  } catch {}
+}
+
+function setMeter(id, value, color) {
+  document.getElementById(id + '-v').textContent = value.toFixed(3);
+  document.getElementById(id + '-bar').style.width = (value * 100) + '%';
+  document.getElementById(id + '-bar').style.background = color;
+}
+
+synth.onvoiceschanged = () => synth.getVoices();
+setInterval(pollHealth, 2000);
+pollHealth();
+
+textInput.focus();
+</script>
+</body>
+</html>

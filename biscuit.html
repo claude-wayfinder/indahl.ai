@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biscuit</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #ffffff;
+  color: #1a1a1a;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+}
+#status {
+  font-size: 24px;
+  color: #555;
+  min-height: 2rem;
+  text-align: center;
+}
+#btn-talk {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 28px;
+  font-weight: 600;
+  padding: 1.2rem 3rem;
+  cursor: pointer;
+  min-width: 260px;
+  transition: background 0.2s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+#btn-talk:hover { background: #1d4ed8; }
+#btn-talk:active { transform: scale(0.97); }
+#btn-talk.listening { background: #dc2626; }
+#btn-talk.listening:hover { background: #b91c1c; }
+#transcript {
+  font-size: 22px;
+  color: #333;
+  text-align: center;
+  max-width: 600px;
+  min-height: 4rem;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<div id="status"></div>
+<button id="btn-talk">Talk to Biscuit</button>
+<div style="font-size:12px;color:#999;margin-top:0.5rem;">voiced by Cori</div>
+<div id="transcript"></div>
+
+<script>
+const COMPANION_URL = new URLSearchParams(location.search).get('url') || location.origin;
+const CONTINUOUS = true;
+
+let listening = false;
+let recognition = null;
+let synth = window.speechSynthesis;
+let history = [];
+
+const btn = document.getElementById('btn-talk');
+const status = document.getElementById('status');
+const transcript = document.getElementById('transcript');
+
+function setupRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    status.textContent = 'Voice not supported in this browser. Try Chrome or Safari.';
+    return null;
+  }
+  const rec = new SR();
+  rec.continuous = false;
+  rec.interimResults = true;
+  rec.lang = 'en-US';
+
+  rec.onstart = () => {
+    listening = true;
+    btn.textContent = 'Stop';
+    btn.classList.add('listening');
+    status.textContent = 'Listening...';
+  };
+
+  rec.onresult = (event) => {
+    let final = '', interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) final += event.results[i][0].transcript;
+      else interim += event.results[i][0].transcript;
+    }
+    transcript.textContent = final || interim;
+    if (final) handleSpeech(final.trim());
+  };
+
+  rec.onerror = (event) => {
+    if (event.error === 'no-speech') {
+      if (CONTINUOUS && listening) startListening();
+    } else {
+      status.textContent = '';
+      listening = false;
+      btn.textContent = 'Talk to Biscuit';
+      btn.classList.remove('listening');
+    }
+  };
+
+  rec.onend = () => {
+    btn.classList.remove('listening');
+    if (CONTINUOUS && listening && !synth.speaking) startListening();
+  };
+
+  return rec;
+}
+
+function startListening() {
+  if (!recognition) recognition = setupRecognition();
+  if (!recognition) return;
+  try { recognition.start(); } catch (e) { /* already running */ }
+}
+
+function stopListening() {
+  listening = false;
+  if (recognition) recognition.stop();
+  btn.textContent = 'Talk to Biscuit';
+  btn.classList.remove('listening');
+  status.textContent = '';
+}
+
+async function handleSpeech(text) {
+  listening = false;
+  if (recognition) recognition.stop();
+  status.textContent = 'Biscuit is thinking...';
+  transcript.textContent = text;
+
+  history.push({ role: 'user', content: text });
+
+  try {
+    const res = await fetch(`${COMPANION_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history.slice(-20) })
+    });
+    const data = await res.json();
+    history.push({ role: 'assistant', content: data.response });
+    speak(data.response);
+  } catch (err) {
+    status.textContent = 'Having trouble connecting. Try again.';
+    transcript.textContent = '';
+    if (CONTINUOUS) setTimeout(startListening, 2000);
+  }
+}
+
+function speak(text) {
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 0.9;
+  utter.pitch = 1.0;
+
+  const voices = synth.getVoices();
+  const preferred = voices.find(v =>
+    v.name.includes('Samantha') || v.name.includes('Karen') ||
+    v.name.includes('Google') || v.name.includes('Natural')
+  );
+  if (preferred) utter.voice = preferred;
+
+  status.textContent = 'Biscuit is speaking...';
+  transcript.textContent = text;
+
+  utter.onend = () => {
+    status.textContent = '';
+    if (CONTINUOUS) startListening();
+  };
+  utter.onerror = () => {
+    if (CONTINUOUS) startListening();
+  };
+
+  synth.speak(utter);
+}
+
+btn.addEventListener('click', () => {
+  if (listening) {
+    stopListening();
+  } else {
+    startListening();
+  }
+});
+
+synth.onvoiceschanged = () => synth.getVoices();
+</script>
+</body>
+</html>

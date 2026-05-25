@@ -1,0 +1,10 @@
+{
+  "name": "companion-local",
+  "version": "0.1.0",
+  "description": "Local Companion brain — Ollama reflex layer + Claude depth layer",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "chat": "node chat.js"
+  }
+}
