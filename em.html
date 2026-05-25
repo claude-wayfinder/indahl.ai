@@ -239,7 +239,7 @@ body {
 </div>
 
 <div id="mirror-label">touch the mirror</div>
-<div id="voiced-by">voiced by Cori</div>
+<div id="voiced-by"></div>
 
 <div id="text-mode">
   <input id="text-input" type="text" placeholder="write something..." autocomplete="off" />
@@ -256,7 +256,7 @@ let started = false;
 let listening = false;
 let speaking = false;
 let recognition = null;
-const synth = window.speechSynthesis;
+let currentAudio = null;
 let history = [];
 let speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
@@ -353,45 +353,44 @@ async function handleInput(text) {
   }
 }
 
-// ── TTS ──
-function pickVoice() {
-  const voices = synth.getVoices();
-  if (!voices.length) return null;
-  return (
-    voices.find(v => v.name.includes('Samantha')) ||
-    voices.find(v => v.name.includes('Karen'))    ||
-    voices.find(v => v.name.includes('Google UK English Female')) ||
-    voices.find(v => v.name.includes('Google US English'))       ||
-    voices.find(v => v.name.toLowerCase().includes('natural') && v.lang.startsWith('en')) ||
-    voices.find(v => v.lang.startsWith('en')) ||
-    voices[0]
-  );
-}
-
-function speak(text) {
-  synth.cancel();
+// ── TTS via ElevenLabs ──
+async function speak(text) {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
   speaking = true;
   setState('speaking');
   transcriptEl.textContent = text;
 
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = 0.88;
-  utter.pitch = 1.0;
-  const voice = pickVoice();
-  if (voice) utter.voice = voice;
-
-  utter.onend = () => {
+  try {
+    const res = await fetch(`${BASE_URL}/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!res.ok) throw new Error('TTS failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    currentAudio = new Audio(url);
+    currentAudio.onended = () => {
+      speaking = false;
+      currentAudio = null;
+      URL.revokeObjectURL(url);
+      setState('idle');
+      if (speechSupported) startListening();
+    };
+    currentAudio.onerror = () => {
+      speaking = false;
+      currentAudio = null;
+      URL.revokeObjectURL(url);
+      setState('idle');
+      if (speechSupported) startListening();
+    };
+    currentAudio.play();
+  } catch(err) {
     speaking = false;
     setState('idle');
+    transcriptEl.textContent = text;
     if (speechSupported) startListening();
-  };
-  utter.onerror = () => {
-    speaking = false;
-    setState('idle');
-    if (speechSupported) startListening();
-  };
-
-  synth.speak(utter);
+  }
 }
 
 // ── Greeting ──
@@ -418,7 +417,7 @@ async function doGreeting() {
 mirror.addEventListener('click', () => {
   if (!started) { started = true; doGreeting(); return; }
   if (speaking) {
-    synth.cancel();
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     speaking = false;
     setState('idle');
     if (speechSupported) startListening();
@@ -446,8 +445,6 @@ textInput.addEventListener('keydown', e => {
 if (!speechSupported) {
   window.addEventListener('load', () => { started = true; doGreeting(); });
 }
-
-synth.onvoiceschanged = () => synth.getVoices();
 </script>
 </body>
 </html>

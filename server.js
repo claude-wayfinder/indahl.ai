@@ -458,30 +458,36 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // --- TTS via Piper (local, no cloud) ---
+  // --- TTS via ElevenLabs ---
   if (req.method === 'POST' && req.url === '/tts') {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
       try {
         const { text } = JSON.parse(body);
-        const piperUrl = config.piperUrl || 'http://127.0.0.1:5000';
-        const piperRes = await fetch(piperUrl, {
+        const apiKey = process.env.ELEVENLABS_API_KEY || config.elevenlabsApiKey;
+        if (!apiKey) throw new Error('ELEVENLABS_API_KEY not set');
+        const voiceId = '3470F6oiRpS7SI9iCQLH';
+        const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
+          headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
+          body: JSON.stringify({
+            text,
+            model_id: 'eleven_multilingual_v2',
+            voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+          })
         });
-        if (!piperRes.ok) throw new Error(`Piper returned ${piperRes.status}`);
-        const audioBuffer = await piperRes.arrayBuffer();
+        if (!elRes.ok) throw new Error(`ElevenLabs returned ${elRes.status}`);
+        const audioBuffer = await elRes.arrayBuffer();
         res.writeHead(200, {
-          'Content-Type': 'audio/wav',
+          'Content-Type': 'audio/mpeg',
           'Content-Length': audioBuffer.byteLength
         });
         res.end(Buffer.from(audioBuffer));
       } catch (err) {
-        console.log('[tts] Piper unavailable:', err.message);
+        console.log('[tts] ElevenLabs error:', err.message);
         res.writeHead(503, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'TTS unavailable — Piper not running' }));
+        res.end(JSON.stringify({ error: 'TTS unavailable' }));
       }
     });
     return;
