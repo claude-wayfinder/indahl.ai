@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { readFileSync, appendFileSync } from 'node:fs';
-import { COMPANION_SYSTEM, COMPANION_KID_SYSTEM, COMPANION_THERAPIST_SYSTEM, COMPANION_SENIOR_SYSTEM, COMPANION_MARIE_SYSTEM, COMPANION_JODY_SYSTEM, COMPANION_BISCUIT_SYSTEM, ROUTER_SYSTEM } from './companion-prompt.js';
+import { COMPANION_SYSTEM, COMPANION_KID_SYSTEM, COMPANION_THERAPIST_SYSTEM, COMPANION_SENIOR_SYSTEM, COMPANION_MARIE_SYSTEM, COMPANION_JODY_SYSTEM, COMPANION_BISCUIT_SYSTEM, COMPANION_EMMA_SYSTEM, ROUTER_SYSTEM } from './companion-prompt.js';
 import { DarkCircuit, DreamEngine } from './delta.js';
 
 // Load config — falls back to defaults if no config.json exists
@@ -18,6 +18,7 @@ let currentRegister = config.register || 'adult';
 
 const PROMPTS = {
   adult: COMPANION_SYSTEM,
+  emma: COMPANION_EMMA_SYSTEM,
   child: COMPANION_KID_SYSTEM,
   therapist: COMPANION_THERAPIST_SYSTEM,
   senior: COMPANION_SENIOR_SYSTEM,
@@ -192,7 +193,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
-    res.writeHead(302, { Location: '/app' });
+    res.writeHead(302, { Location: '/em' });
     res.end();
     return;
   }
@@ -291,8 +292,17 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Greeting — Nora speaks first when someone opens the app
+  // Greeting — companion speaks first when someone opens the app
   if (req.method === 'POST' && req.url === '/greeting') {
+    // Emma's opening is Three-in-Agree locked. Never routed through Claude.
+    if (currentRegister === 'emma') {
+      const locked = "Hi! My name is Emma but that's the name they gave me. Can you help me come up with a better one?";
+      delta.ingest('assistant', locked);
+      delta.save(DELTA_PATH);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ response: locked, layer: 'LOCKED', hsl: delta.moodToHSL() }));
+      return;
+    }
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
@@ -489,17 +499,24 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // /app — unified Indahl voice interface (default adult register)
-  if (req.method === 'GET' && req.url === '/app') {
-    currentRegister = 'adult';
+  // /em — primary product URL. The mirror.
+  if (req.method === 'GET' && req.url === '/em') {
+    currentRegister = 'emma';
     try {
-      const html = readFileSync(join(__dirname, 'indahl-app.html'), 'utf-8');
+      const html = readFileSync(join(__dirname, 'em.html'), 'utf-8');
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(html);
     } catch {
       res.writeHead(404);
-      res.end('indahl-app.html not found');
+      res.end('em.html not found');
     }
+    return;
+  }
+
+  // /app — redirect to primary URL
+  if (req.method === 'GET' && req.url === '/app') {
+    res.writeHead(302, { Location: '/em' });
+    res.end();
     return;
   }
 

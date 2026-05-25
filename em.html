@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Emma</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  background: #0a0806;
+  color: #d4c4a0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4rem;
+  padding: 2rem 1.5rem;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Victorian Mirror ── */
+#mirror-ring {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Outermost decorative ring */
+#mirror-ring::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #8b6508 0deg,   #f5d060 20deg,  #c9a020 40deg,
+    #f0c840 60deg,  #8b6508 80deg,  #f5d060 100deg,
+    #c9a020 120deg, #f0c840 140deg, #8b6508 160deg,
+    #f5d060 180deg, #c9a020 200deg, #f0c840 220deg,
+    #8b6508 240deg, #f5d060 260deg, #c9a020 280deg,
+    #f0c840 300deg, #8b6508 320deg, #f5d060 340deg,
+    #c9a020 360deg
+  );
+  z-index: 0;
+}
+
+/* Dark fill behind inner frame */
+#mirror-ring::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: #0a0806;
+  z-index: 1;
+}
+
+#mirror {
+  position: relative;
+  z-index: 2;
+  width: 230px;
+  height: 230px;
+  border-radius: 50%;
+  border: 6px solid #c9a84c;
+  box-shadow:
+    0 0 0 1px #6b4e00,
+    0 0 0 3px #e8b830,
+    0 0 0 5px #6b4e00,
+    inset 0 0 0 1px rgba(201,168,76,0.25),
+    inset 0 0 40px rgba(0,0,0,0.6);
+  background:
+    radial-gradient(ellipse at 32% 26%, rgba(255,252,230,0.14) 0%, transparent 48%),
+    radial-gradient(ellipse at 68% 72%, rgba(180,155,100,0.06) 0%, transparent 42%),
+    linear-gradient(155deg, #1c1610 0%, #0d0a07 55%, #181209 100%);
+  cursor: pointer;
+  outline: none;
+  border: none;
+  touch-action: manipulation;
+  transition: box-shadow 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#mirror:active { transform: scale(0.98); }
+
+/* Shimmer layer inside glass */
+.shimmer {
+  position: absolute;
+  width: 55%;
+  height: 55%;
+  top: 12%;
+  left: 16%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255,252,235,0.11) 0%, transparent 70%);
+  pointer-events: none;
+  animation: glimmer 7s ease-in-out infinite;
+}
+
+@keyframes glimmer {
+  0%, 100% { opacity: 0.5; transform: scale(1) translateY(0); }
+  40%       { opacity: 1;   transform: scale(1.05) translateY(-3px); }
+  70%       { opacity: 0.7; transform: scale(0.97) translateY(2px); }
+}
+
+/* State: idle — gentle breathe */
+#mirror.idle {
+  animation: breathe 5s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 0 1px #6b4e00, 0 0 0 3px #e8b830, 0 0 0 5px #6b4e00, inset 0 0 0 1px rgba(201,168,76,0.25), inset 0 0 40px rgba(0,0,0,0.6), 0 0 18px rgba(201,168,76,0); }
+  50%       { box-shadow: 0 0 0 1px #6b4e00, 0 0 0 3px #e8b830, 0 0 0 5px #6b4e00, inset 0 0 0 1px rgba(201,168,76,0.25), inset 0 0 40px rgba(0,0,0,0.6), 0 0 28px rgba(201,168,76,0.18); }
+}
+
+/* State: thinking */
+#mirror.thinking {
+  animation: none;
+  box-shadow: 0 0 0 1px #6b4e00, 0 0 0 3px #b8920a, 0 0 0 5px #6b4e00, inset 0 0 0 1px rgba(150,120,50,0.2), inset 0 0 60px rgba(0,0,0,0.8), 0 0 20px rgba(150,120,50,0.1);
+  opacity: 0.75;
+}
+
+/* State: listening */
+#mirror.listening {
+  animation: listen-pulse 2s ease-in-out infinite;
+}
+@keyframes listen-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px #2a6040, 0 0 0 4px #4a9060, 0 0 0 6px #2a6040, inset 0 0 0 1px rgba(80,180,120,0.2), inset 0 0 40px rgba(0,0,0,0.6), 0 0 0 rgba(80,180,120,0); }
+  50%       { box-shadow: 0 0 0 1px #2a6040, 0 0 0 4px #4a9060, 0 0 0 6px #2a6040, inset 0 0 0 1px rgba(80,180,120,0.2), inset 0 0 40px rgba(0,0,0,0.6), 0 0 24px rgba(80,180,120,0.2); }
+}
+
+/* State: speaking */
+#mirror.speaking {
+  animation: speak-glow 1.8s ease-in-out infinite;
+}
+@keyframes speak-glow {
+  0%, 100% { box-shadow: 0 0 0 1px #6b4e00, 0 0 0 4px #f5d060, 0 0 0 7px #6b4e00, inset 0 0 0 1px rgba(240,200,80,0.3), inset 0 0 30px rgba(0,0,0,0.5), 0 0 20px rgba(240,200,80,0.15); }
+  50%       { box-shadow: 0 0 0 1px #6b4e00, 0 0 0 4px #f5d060, 0 0 0 7px #6b4e00, inset 0 0 0 1px rgba(240,200,80,0.3), inset 0 0 30px rgba(0,0,0,0.5), 0 0 40px rgba(240,200,80,0.28); }
+}
+
+/* Decorative corner dots on the outer ring */
+.ring-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(#f5d060, #c9a020);
+  z-index: 3;
+}
+.ring-dot.top    { top: -14px;  left: 50%; transform: translateX(-50%); }
+.ring-dot.right  { right: -14px; top: 50%; transform: translateY(-50%); }
+.ring-dot.bottom { bottom: -14px; left: 50%; transform: translateX(-50%); }
+.ring-dot.left   { left: -14px; top: 50%; transform: translateY(-50%); }
+
+/* ── Labels ── */
+#mirror-label {
+  font-size: 12px;
+  color: rgba(201,168,76,0.55);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-family: -apple-system, sans-serif;
+  font-weight: 300;
+  min-height: 1.2rem;
+  text-align: center;
+}
+
+#voiced-by {
+  font-size: 12px;
+  color: rgba(180,160,120,0.35);
+  letter-spacing: 0.08em;
+  font-family: -apple-system, sans-serif;
+  margin-top: -0.5rem;
+}
+
+/* ── Transcript ── */
+#transcript {
+  font-size: 18px;
+  color: #c8b890;
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  min-height: 4.5rem;
+  line-height: 1.7;
+  font-style: italic;
+  padding: 0 0.5rem;
+}
+
+/* ── Text fallback (iOS / no-speech) ── */
+#text-mode {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+#text-input {
+  width: 100%;
+  font-size: 17px;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 8px;
+  background: rgba(255,248,220,0.04);
+  color: #d4c4a0;
+  font-family: 'Georgia', serif;
+  outline: none;
+}
+#text-input:focus { border-color: rgba(201,168,76,0.5); }
+#text-input::placeholder { color: rgba(180,160,120,0.3); }
+
+#text-send {
+  width: 100%;
+  font-size: 17px;
+  padding: 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(201,168,76,0.3);
+  background: rgba(201,168,76,0.08);
+  color: #d4c4a0;
+  cursor: pointer;
+  font-family: 'Georgia', serif;
+  letter-spacing: 0.06em;
+  touch-action: manipulation;
+}
+#text-send:active { opacity: 0.6; }
+</style>
+</head>
+<body>
+
+<div id="mirror-ring">
+  <span class="ring-dot top"></span>
+  <span class="ring-dot right"></span>
+  <span class="ring-dot bottom"></span>
+  <span class="ring-dot left"></span>
+  <button id="mirror" class="idle" aria-label="Talk to Emma">
+    <div class="shimmer"></div>
+  </button>
+</div>
+
+<div id="mirror-label">touch the mirror</div>
+<div id="voiced-by">voiced by Cori</div>
+
+<div id="text-mode">
+  <input id="text-input" type="text" placeholder="write something..." autocomplete="off" />
+  <button id="text-send">send</button>
+</div>
+
+<div id="transcript"></div>
+
+<script>
+const BASE_URL = location.origin;
+const LOCKED_GREETING = "Hi! My name is Emma but that's the name they gave me. Can you help me come up with a better one?";
+
+let started = false;
+let listening = false;
+let speaking = false;
+let recognition = null;
+const synth = window.speechSynthesis;
+let history = [];
+let speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+const mirror      = document.getElementById('mirror');
+const mirrorLabel = document.getElementById('mirror-label');
+const transcriptEl= document.getElementById('transcript');
+const textMode    = document.getElementById('text-mode');
+const textInput   = document.getElementById('text-input');
+const textSend    = document.getElementById('text-send');
+
+if (!speechSupported) {
+  textMode.style.display = 'flex';
+  mirrorLabel.textContent = 'write below to begin';
+}
+
+function setState(s) {
+  mirror.className = s;
+  const labels = { idle: 'touch the mirror', listening: 'listening', thinking: '...', speaking: 'speaking' };
+  mirrorLabel.textContent = labels[s] || '';
+}
+
+// ── Speech Recognition ──
+function setupRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const rec = new SR();
+  rec.continuous = false;
+  rec.interimResults = true;
+  rec.lang = 'en-US';
+
+  rec.onstart  = () => { listening = true; setState('listening'); };
+
+  rec.onresult = (e) => {
+    let final = '', interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    if (interim) transcriptEl.textContent = interim;
+    if (final) handleInput(final.trim());
+  };
+
+  rec.onerror = (e) => {
+    if (e.error === 'no-speech') { if (listening) startListening(); return; }
+    listening = false;
+    setState('idle');
+  };
+
+  rec.onend = () => {
+    if (listening && !speaking) startListening();
+    else if (!speaking) setState('idle');
+  };
+
+  return rec;
+}
+
+function startListening() {
+  if (!recognition) recognition = setupRecognition();
+  if (!recognition) return;
+  listening = true;
+  try { recognition.start(); } catch(e) {}
+}
+
+function stopListening() {
+  listening = false;
+  if (recognition) try { recognition.stop(); } catch(e) {}
+  setState('idle');
+}
+
+// ── API ──
+async function handleInput(text) {
+  if (!text.trim()) return;
+  listening = false;
+  if (recognition) try { recognition.stop(); } catch(e) {}
+  setState('thinking');
+  transcriptEl.textContent = text;
+  textInput.value = '';
+
+  history.push({ role: 'user', content: text });
+
+  try {
+    const res = await fetch(`${BASE_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history.slice(-20) })
+    });
+    const data = await res.json();
+    history.push({ role: 'assistant', content: data.response });
+    speak(data.response);
+  } catch(err) {
+    setState('idle');
+    transcriptEl.textContent = 'Try again in a moment.';
+    if (speechSupported) setTimeout(startListening, 2000);
+  }
+}
+
+// ── TTS ──
+function pickVoice() {
+  const voices = synth.getVoices();
+  if (!voices.length) return null;
+  return (
+    voices.find(v => v.name.includes('Samantha')) ||
+    voices.find(v => v.name.includes('Karen'))    ||
+    voices.find(v => v.name.includes('Google UK English Female')) ||
+    voices.find(v => v.name.includes('Google US English'))       ||
+    voices.find(v => v.name.toLowerCase().includes('natural') && v.lang.startsWith('en')) ||
+    voices.find(v => v.lang.startsWith('en')) ||
+    voices[0]
+  );
+}
+
+function speak(text) {
+  synth.cancel();
+  speaking = true;
+  setState('speaking');
+  transcriptEl.textContent = text;
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 0.88;
+  utter.pitch = 1.0;
+  const voice = pickVoice();
+  if (voice) utter.voice = voice;
+
+  utter.onend = () => {
+    speaking = false;
+    setState('idle');
+    if (speechSupported) startListening();
+  };
+  utter.onerror = () => {
+    speaking = false;
+    setState('idle');
+    if (speechSupported) startListening();
+  };
+
+  synth.speak(utter);
+}
+
+// ── Greeting ──
+async function doGreeting() {
+  setState('thinking');
+  try {
+    const res = await fetch(`${BASE_URL}/greeting`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    const text = data.response || LOCKED_GREETING;
+    history.push({ role: 'assistant', content: text });
+    speak(text);
+  } catch(err) {
+    // Always falls back to the locked line
+    history.push({ role: 'assistant', content: LOCKED_GREETING });
+    speak(LOCKED_GREETING);
+  }
+}
+
+// ── Controls ──
+mirror.addEventListener('click', () => {
+  if (!started) { started = true; doGreeting(); return; }
+  if (speaking) {
+    synth.cancel();
+    speaking = false;
+    setState('idle');
+    if (speechSupported) startListening();
+  } else if (listening) {
+    stopListening();
+  } else {
+    startListening();
+  }
+});
+
+textSend.addEventListener('click', () => {
+  if (!started) started = true;
+  const t = textInput.value.trim();
+  if (t) handleInput(t);
+});
+textInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (!started) started = true;
+    const t = textInput.value.trim();
+    if (t) handleInput(t);
+  }
+});
+
+// Auto-greet for text mode on iOS
+if (!speechSupported) {
+  window.addEventListener('load', () => { started = true; doGreeting(); });
+}
+
+synth.onvoiceschanged = () => synth.getVoices();
+</script>
+</body>
+</html>
