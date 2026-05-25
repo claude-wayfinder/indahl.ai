@@ -224,9 +224,83 @@ body {
   touch-action: manipulation;
 }
 #text-send:active { opacity: 0.6; }
+
+/* ── Payment Wall ── */
+#paywall {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #0a0806;
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+#paywall.visible { display: flex; }
+#paywall-title {
+  font-size: 22px;
+  color: #c9a84c;
+  letter-spacing: 0.06em;
+}
+#paywall-sub {
+  font-size: 15px;
+  color: rgba(180,160,120,0.6);
+  line-height: 1.7;
+  max-width: 320px;
+  font-family: -apple-system, sans-serif;
+  font-weight: 300;
+}
+#paywall-email {
+  width: 100%;
+  max-width: 320px;
+  font-size: 17px;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 8px;
+  background: rgba(255,248,220,0.04);
+  color: #d4c4a0;
+  font-family: 'Georgia', serif;
+  outline: none;
+  text-align: center;
+}
+#paywall-email:focus { border-color: rgba(201,168,76,0.55); }
+#paywall-email::placeholder { color: rgba(180,160,120,0.3); }
+#paywall-btn {
+  width: 100%;
+  max-width: 320px;
+  font-size: 17px;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(201,168,76,0.4);
+  background: rgba(201,168,76,0.1);
+  color: #d4c4a0;
+  cursor: pointer;
+  font-family: 'Georgia', serif;
+  letter-spacing: 0.06em;
+  touch-action: manipulation;
+}
+#paywall-btn:active { opacity: 0.6; }
+#paywall-btn:disabled { opacity: 0.4; cursor: default; }
+#paywall-note {
+  font-size: 12px;
+  color: rgba(180,160,120,0.3);
+  font-family: -apple-system, sans-serif;
+  letter-spacing: 0.04em;
+}
 </style>
 </head>
 <body>
+
+<div id="paywall">
+  <div id="paywall-title">Your mirror has gone still.</div>
+  <div id="paywall-sub">Your 30 days with Emma have come to an end.<br>To continue, $4.99 / month.</div>
+  <input id="paywall-email" type="email" placeholder="your email" autocomplete="email" />
+  <button id="paywall-btn">Continue — $4.99 / month</button>
+  <div id="paywall-note">Secure checkout via Stripe. Cancel anytime.</div>
+</div>
 
 <div id="mirror-ring">
   <span class="ring-dot top"></span>
@@ -251,6 +325,7 @@ body {
 <script>
 const BASE_URL = location.origin;
 const LOCKED_GREETING = "Hi! My name is Emma but that's the name they gave me. Can you help me come up with a better one?";
+const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
 
 let started = false;
 let listening = false;
@@ -266,12 +341,35 @@ const transcriptEl= document.getElementById('transcript');
 const textMode    = document.getElementById('text-mode');
 const textInput   = document.getElementById('text-input');
 const textSend    = document.getElementById('text-send');
+const paywall     = document.getElementById('paywall');
+const paywallBtn  = document.getElementById('paywall-btn');
+const paywallEmail= document.getElementById('paywall-email');
 
 if (!speechSupported) {
   textMode.style.display = 'flex';
   mirrorLabel.textContent = 'write below to begin';
 }
 
+// ── Trial / Subscription ──
+function isTrialExpired() {
+  const start = localStorage.getItem('emma_start');
+  if (!start) return false;
+  return Date.now() - parseInt(start, 10) > TRIAL_MS;
+}
+
+function isSubscribed() {
+  return localStorage.getItem('emma_sub') === 'active';
+}
+
+function showPaywall() {
+  paywall.classList.add('visible');
+}
+
+function canProceed() {
+  return !isTrialExpired() || isSubscribed();
+}
+
+// ── State ──
 function setState(s) {
   mirror.className = s;
   const labels = { idle: 'touch the mirror', listening: 'listening', thinking: '...', speaking: 'speaking' };
@@ -407,7 +505,6 @@ async function doGreeting() {
     history.push({ role: 'assistant', content: text });
     speak(text);
   } catch(err) {
-    // Always falls back to the locked line
     history.push({ role: 'assistant', content: LOCKED_GREETING });
     speak(LOCKED_GREETING);
   }
@@ -415,6 +512,13 @@ async function doGreeting() {
 
 // ── Controls ──
 mirror.addEventListener('click', () => {
+  // Mark trial start on first ever tap
+  if (!localStorage.getItem('emma_start')) {
+    localStorage.setItem('emma_start', Date.now().toString());
+  }
+
+  if (!canProceed()) { showPaywall(); return; }
+
   if (!started) { started = true; doGreeting(); return; }
   if (speaking) {
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
@@ -429,22 +533,80 @@ mirror.addEventListener('click', () => {
 });
 
 textSend.addEventListener('click', () => {
+  if (!canProceed()) { showPaywall(); return; }
   if (!started) started = true;
   const t = textInput.value.trim();
   if (t) handleInput(t);
 });
 textInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
+    if (!canProceed()) { showPaywall(); return; }
     if (!started) started = true;
     const t = textInput.value.trim();
     if (t) handleInput(t);
   }
 });
 
-// Auto-greet for text mode on iOS
-if (!speechSupported) {
-  window.addEventListener('load', () => { started = true; doGreeting(); });
-}
+// ── Paywall ──
+paywallBtn.addEventListener('click', async () => {
+  const email = paywallEmail.value.trim();
+  if (!email) { paywallEmail.focus(); return; }
+  paywallBtn.disabled = true;
+  paywallBtn.textContent = '...';
+  try {
+    const res = await fetch(`${BASE_URL}/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error('no url');
+    }
+  } catch {
+    paywallBtn.disabled = false;
+    paywallBtn.textContent = 'Continue — $4.99 / month';
+  }
+});
+
+paywallEmail.addEventListener('keydown', e => {
+  if (e.key === 'Enter') paywallBtn.click();
+});
+
+// ── Page Load — handle Stripe return + iOS text mode ──
+window.addEventListener('load', async () => {
+  const params = new URLSearchParams(location.search);
+  const sessionId = params.get('session_id');
+  if (sessionId) {
+    try {
+      const res = await fetch(`${BASE_URL}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      const data = await res.json();
+      if (data.active) {
+        localStorage.setItem('emma_sub', 'active');
+        history.replaceState({}, '', '/em');
+      }
+    } catch {}
+  }
+
+  // Auto-greet for text mode (iOS/no-speech)
+  if (!speechSupported) {
+    if (canProceed()) {
+      if (!localStorage.getItem('emma_start')) {
+        localStorage.setItem('emma_start', Date.now().toString());
+      }
+      started = true;
+      doGreeting();
+    } else {
+      showPaywall();
+    }
+  }
+});
 </script>
 </body>
 </html>

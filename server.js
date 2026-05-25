@@ -155,6 +155,30 @@ function extractHSL(text) {
   return null;
 }
 
+// --- Stripe ---
+// Set STRIPE_SECRET_KEY and STRIPE_PRICE_ID in Render environment variables
+const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
+const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID || '';
+
+async function stripePost(path, params) {
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${STRIPE_SECRET}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams(params).toString()
+  });
+  return res.json();
+}
+
+async function stripeGet(path) {
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    headers: { 'Authorization': `Bearer ${STRIPE_SECRET}` }
+  });
+  return res.json();
+}
+
 // --- HTTP Server ---
 
 // Rate limiting — per IP, per minute
@@ -540,6 +564,58 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(html);
     }
+    return;
+  }
+
+  // /subscribe — create Stripe Checkout session
+  if (req.method === 'POST' && req.url === '/subscribe') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { email } = JSON.parse(body);
+        if (!STRIPE_SECRET) throw new Error('Stripe not configured');
+        if (!STRIPE_PRICE_ID) throw new Error('STRIPE_PRICE_ID not set');
+        const BASE = process.env.NODE_ENV === 'production' ? 'https://indahl.ai' : `http://localhost:${PORT}`;
+        const session = await stripePost('/checkout/sessions', {
+          'customer_email': email,
+          'mode': 'subscription',
+          'line_items[0][price]': STRIPE_PRICE_ID,
+          'line_items[0][quantity]': '1',
+          'success_url': `${BASE}/em?session_id={CHECKOUT_SESSION_ID}`,
+          'cancel_url': `${BASE}/em`,
+        });
+        if (session.error) throw new Error(session.error.message);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ url: session.url }));
+      } catch (err) {
+        console.error('[subscribe]', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // /verify — confirm Stripe subscription is active after checkout
+  if (req.method === 'POST' && req.url === '/verify') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { session_id } = JSON.parse(body);
+        if (!STRIPE_SECRET) throw new Error('Stripe not configured');
+        const session = await stripeGet(`/checkout/sessions/${session_id}`);
+        if (session.error) throw new Error(session.error.message);
+        const active = session.payment_status === 'paid' && !!session.subscription;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ active, customer_email: session.customer_details?.email || '' }));
+      } catch (err) {
+        console.error('[verify]', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ active: false }));
+      }
+    });
     return;
   }
 

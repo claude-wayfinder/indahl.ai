@@ -10,5 +10,11 @@ services:
         value: https://buddy-companion.kory-indahl.workers.dev
       - key: NODE_ENV
         value: production
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
     domains:
       - indahl.ai
