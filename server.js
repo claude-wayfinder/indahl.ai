@@ -217,8 +217,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
-    res.writeHead(302, { Location: '/em' });
-    res.end();
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Indahl</title></head><body></body></html>');
     return;
   }
 
@@ -543,12 +543,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // /app — redirect to primary URL
-  if (req.method === 'GET' && req.url === '/app') {
-    res.writeHead(302, { Location: '/em' });
-    res.end();
-    return;
-  }
 
   // Nora pages — each URL auto-switches register and serves personalized HTML
   const noraRoutes = { '/nora': { register: 'senior', file: 'nora.html' }, '/jody': { register: 'jody', file: 'jody.html' }, '/marie': { register: 'marie', file: 'nora.html' }, '/lynne': { register: 'adult', file: 'nora.html' }, '/biscuit': { register: 'biscuit', file: 'biscuit.html' } };
