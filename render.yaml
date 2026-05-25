@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: indahl
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: BUDDY_WORKER_URL
+        value: https://buddy-companion.kory-indahl.workers.dev
+      - key: NODE_ENV
+        value: production
+    domains:
+      - indahl.ai
