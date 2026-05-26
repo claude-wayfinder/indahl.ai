@@ -217,8 +217,14 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Indahl</title></head><body></body></html>');
+    try {
+      const html = readFileSync(join(__dirname, 'index.html'), 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(html);
+    } catch {
+      res.writeHead(404);
+      res.end('not found');
+    }
     return;
   }
 

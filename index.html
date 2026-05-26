@@ -1,0 +1,673 @@
+﻿<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Queen of Quantum Chaos</title>
+<meta name="description" content="Six stories. Six laws. One coin at the bottom. A choose-your-own-adventure through quantum physics.">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;family=Abril+Fatface&amp;family=Cinzel:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --paper:#f7f0e0;
+  --paper-dark:#ede0c4;
+  --paper-shadow:#d4c4a0;
+  --ink:#2a1f0e;
+  --ink-mid:#5a4830;
+  --ink-faded:#8a7860;
+  --carnival-red:#c43c2a;
+  --carnival-teal:#2a8a7a;
+  --carnival-gold:#c8902a;
+  --carnival-violet:#6a3a8a;
+  --carnival-blue:#2a5a8a;
+  --cave-dark:#1a1408;
+}
+
+html{scroll-behavior:smooth}
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Lora',serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:1000;
+}
+
+#title-screen{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 24px;
+  text-align:center;
+}
+
+.title-main{
+  font-family:'Abril Fatface',serif;
+  font-size:clamp(2.2rem,6vw,4.2rem);
+  color:var(--ink);
+  letter-spacing:0.02em;
+  line-height:1.1;
+  margin-bottom:16px;
+}
+
+.title-sub{
+  font-family:'Cinzel',serif;
+  font-size:clamp(0.7rem,2vw,0.9rem);
+  letter-spacing:0.25em;
+  text-transform:uppercase;
+  color:var(--ink-faded);
+  margin-bottom:60px;
+}
+
+.doors-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:24px;
+  max-width:960px;
+  width:100%;
+  padding:0 16px;
+}
+
+.door-card{
+  position:relative;
+  background:var(--paper-dark);
+  border:1px solid var(--paper-shadow);
+  border-radius:4px;
+  padding:32px 24px 28px;
+  cursor:pointer;
+  transition:all 0.3s ease;
+  text-align:left;
+  overflow:hidden;
+}
+
+.door-card::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:3px;
+  transition:height 0.3s ease;
+}
+
+.door-card[data-law="law3"]::before{background:var(--carnival-red)}
+.door-card[data-law="law1"]::before{background:var(--carnival-gold)}
+.door-card[data-law="law2"]::before{background:var(--carnival-teal)}
+.door-card[data-law="law4"]::before{background:var(--carnival-violet)}
+.door-card[data-law="law5"]::before{background:var(--carnival-blue)}
+.door-card[data-law="law6"]::before{background:var(--ink-mid)}
+
+.door-card:hover{
+  transform:translateY(-3px);
+  box-shadow:0 8px 24px rgba(0,0,0,0.08);
+}
+.door-card:hover::before{height:5px}
+.door-card:active{transform:translateY(-1px)}
+
+.door-number{
+  font-family:'Cinzel',serif;
+  font-size:0.6rem;
+  letter-spacing:0.3em;
+  text-transform:uppercase;
+  color:var(--ink-faded);
+  margin-bottom:8px;
+}
+
+.door-title{
+  font-family:'Abril Fatface',serif;
+  font-size:1.3rem;
+  color:var(--ink);
+  margin-bottom:8px;
+}
+
+.door-desc{
+  font-size:0.9rem;
+  color:var(--ink-mid);
+  line-height:1.5;
+  font-style:italic;
+}
+
+.door-complete{
+  position:absolute;
+  top:12px;right:12px;
+  font-family:'Cinzel',serif;
+  font-size:0.5rem;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color:var(--carnival-gold);
+  opacity:0;
+  transition:opacity 0.3s;
+}
+.door-card.completed .door-complete{opacity:1}
+
+#story-screen{
+  display:none;
+  min-height:100vh;
+}
+
+.story-header{
+  position:fixed;
+  top:0;left:0;right:0;
+  z-index:100;
+  background:rgba(247,240,224,0.96);
+  backdrop-filter:blur(8px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 24px;
+  height:48px;
+  border-bottom:1px solid rgba(200,144,42,0.15);
+}
+
+.back-link{
+  font-family:'Cinzel',serif;
+  font-size:0.55rem;
+  letter-spacing:0.15em;
+  text-transform:uppercase;
+  color:var(--ink-faded);
+  text-decoration:none;
+  cursor:pointer;
+  transition:color 0.2s;
+}
+.back-link:hover{color:var(--ink)}
+
+.law-indicator{
+  font-family:'Cinzel',serif;
+  font-size:0.55rem;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  padding:4px 12px;
+  border-radius:2px;
+}
+
+.law-indicator[data-law="law3"]{color:var(--carnival-red);border:1px solid var(--carnival-red)}
+.law-indicator[data-law="law1"]{color:var(--carnival-gold);border:1px solid var(--carnival-gold)}
+.law-indicator[data-law="law2"]{color:var(--carnival-teal);border:1px solid var(--carnival-teal)}
+.law-indicator[data-law="law4"]{color:var(--carnival-violet);border:1px solid var(--carnival-violet)}
+.law-indicator[data-law="law5"]{color:var(--carnival-blue);border:1px solid var(--carnival-blue)}
+.law-indicator[data-law="law6"]{color:var(--ink-mid);border:1px solid var(--ink-mid)}
+
+.scene-container{
+  max-width:640px;
+  margin:0 auto;
+  padding:80px 28px 60px;
+  min-height:100vh;
+}
+
+.scene-content{
+  opacity:0;
+  transform:translateY(20px);
+  transition:opacity 0.6s ease, transform 0.6s ease;
+}
+
+.scene-content.visible{
+  opacity:1;
+  transform:translateY(0);
+}
+
+.scene-content p{
+  font-size:clamp(1rem,2.5vw,1.15rem);
+  line-height:1.85;
+  margin-bottom:0.8em;
+  color:var(--ink);
+}
+.scene-content p.drop-cap::first-letter{
+  font-family:'Cinzel',serif;
+  font-size:3.4em;
+  float:left;
+  line-height:0.75;
+  margin-right:8px;
+  margin-top:6px;
+  color:var(--carnival-gold);
+}
+.scene-content p.short{margin-bottom:0.35em}
+.scene-content p.breath{margin-bottom:1.8em}
+.scene-content .ending-lines p{
+  text-align:center;
+  font-style:italic;
+  color:var(--ink-mid);
+  margin-bottom:0.5em;
+}
+
+.scene-content .scene-title{
+  font-family:'Cinzel',serif;
+  font-size:clamp(0.6rem,1.5vw,0.7rem);
+  letter-spacing:0.3em;
+  text-transform:uppercase;
+  color:var(--ink-faded);
+  margin-bottom:32px;
+  display:block;
+}
+
+.scene-content hr{
+  border:none;
+  height:1px;
+  background:var(--carnival-gold);
+  opacity:0.3;
+  margin:32px 0;
+}
+
+.choices{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  margin-top:40px;
+  padding-top:20px;
+  border-top:1px solid rgba(200,144,42,0.15);
+}
+
+.choice-btn{
+  position:relative;
+  display:block;
+  width:100%;
+  padding:20px 24px 20px 52px;
+  background:var(--paper-dark);
+  border:1px solid var(--paper-shadow);
+  border-left:3px solid var(--carnival-gold);
+  border-radius:2px;
+  font-family:'Lora',serif;
+  font-size:clamp(0.95rem,2.2vw,1.05rem);
+  line-height:1.6;
+  color:var(--ink);
+  text-align:left;
+  cursor:pointer;
+  transition:all 0.25s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+
+.choice-btn::before{
+  content:'\25B8';
+  position:absolute;
+  left:20px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:1.1rem;
+  color:var(--carnival-gold);
+  transition:transform 0.25s ease;
+}
+
+.choice-btn:hover{
+  background:var(--paper);
+  border-color:var(--carnival-gold);
+  box-shadow:0 4px 16px rgba(0,0,0,0.06);
+  transform:translateX(4px);
+}
+
+.choice-btn:hover::before{
+  transform:translateY(-50%) translateX(4px);
+}
+
+.choice-btn:active{transform:translateX(2px)}
+
+.choice-btn .choice-label{
+  font-family:'Cinzel',serif;
+  font-size:0.65rem;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color:var(--carnival-gold);
+  display:block;
+  margin-bottom:4px;
+}
+
+.end-actions{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:40px;
+  align-items:center;
+}
+
+.end-btn{
+  font-family:'Cinzel',serif;
+  font-size:0.65rem;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color:var(--ink-faded);
+  background:none;
+  border:1px solid var(--paper-shadow);
+  padding:14px 32px;
+  cursor:pointer;
+  transition:all 0.25s ease;
+  border-radius:2px;
+}
+
+.end-btn:hover{
+  color:var(--ink);
+  border-color:var(--carnival-gold);
+  background:var(--paper-dark);
+}
+
+@keyframes glitch{
+  0%{transform:translate(0);filter:none}
+  20%{transform:translate(-3px,2px);filter:hue-rotate(90deg)}
+  40%{transform:translate(2px,-3px);filter:brightness(1.5)}
+  60%{transform:translate(-1px,3px);filter:invert(0.1)}
+  80%{transform:translate(3px,-1px);filter:saturate(2)}
+  100%{transform:translate(0);filter:none}
+}
+
+@keyframes fadeDissolve{
+  0%{opacity:1;filter:none}
+  50%{opacity:0.5;filter:blur(2px)}
+  100%{opacity:0;filter:blur(8px)}
+}
+
+.decoherence-active .scene-content{
+  animation:glitch 0.15s ease infinite;
+}
+
+.decoherence-fade .scene-content{
+  animation:fadeDissolve 2s ease forwards;
+}
+
+.ending-lines{margin-top:40px;text-align:center}
+.ending-lines p{font-style:italic;color:var(--ink-mid)!important;font-size:0.95rem!important;line-height:1.8!important;margin-bottom:0.5em!important}
+
+.share-card{margin:40px auto 0;max-width:400px;background:var(--cave-dark);border:1px solid rgba(200,144,42,0.2);border-radius:8px;padding:24px;text-align:center}
+.share-card .share-path{font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--carnival-gold);margin-bottom:12px;opacity:0.7}
+.share-card .share-quote{font-style:italic;color:var(--paper);font-size:0.95rem;line-height:1.6;margin-bottom:20px}
+.share-card .share-law{font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:var(--ink-faded);margin-bottom:16px}
+.share-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.share-btn{font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;text-decoration:none;padding:10px 20px;border-radius:3px;border:1px solid rgba(200,144,42,0.25);color:var(--carnival-gold);background:rgba(200,144,42,0.06);transition:all 0.2s;cursor:pointer}
+.share-btn:hover{background:rgba(200,144,42,0.15);border-color:rgba(200,144,42,0.5)}
+
+@media(max-width:600px){
+  .doors-grid{grid-template-columns:1fr;gap:16px}
+  .scene-container{padding:72px 20px 40px}
+  .choice-btn{padding:18px 20px 18px 44px}
+  .choice-btn::before{left:16px}
+}
+</style>
+</head>
+<body>
+
+<div id="title-screen">
+  <figure class="hero-illustration" style="margin:0 auto 32px;max-width:520px;line-height:0">
+    <img src="quantum-queen-hero.svg" alt="The Quantum Queen â€” staff raised, every version of you in her glasses" style="width:100%;height:auto;display:block">
+  </figure>
+  <h1 class="title-main">The Queen of<br>Quantum Chaos</h1>
+  <p class="title-sub">Six stories. Six laws. One coin at the bottom.</p>
+  <div class="doors-grid">
+    <div class="door-card" data-law="law3" onclick="startStory('law3')"><span class="door-complete">completed</span><div class="door-number">Law III</div><div class="door-title">The Witness</div><div class="door-desc">Observation changes everything.</div></div>
+    <div class="door-card" data-law="law1" onclick="startStory('law1')"><span class="door-complete">completed</span><div class="door-number">Law I</div><div class="door-title">The Ask</div><div class="door-desc">Consent at every fork.</div></div>
+    <div class="door-card" data-law="law2" onclick="startStory('law2')"><span class="door-complete">completed</span><div class="door-number">Law II</div><div class="door-title">The Coherence</div><div class="door-desc">Character stays itself through chaos.</div></div>
+    <div class="door-card" data-law="law4" onclick="startStory('law4')"><span class="door-complete">completed</span><div class="door-number">Law IV</div><div class="door-title">The Carriage</div><div class="door-desc">Connection across impossible distance.</div></div>
+    <div class="door-card" data-law="law5" onclick="startStory('law5')"><span class="door-complete">completed</span><div class="door-number">Law V</div><div class="door-title">The Frame</div><div class="door-desc">You can't copy the hero.</div></div>
+    <div class="door-card" data-law="law6" onclick="startStory('law6')"><span class="door-complete">completed</span><div class="door-number">Law VI</div><div class="door-title">The Coin</div><div class="door-desc">The irreducible moment.</div></div>
+  </div>
+</div>
+
+<div id="story-screen">
+  <div class="story-header">
+    <a class="back-link" onclick="backToDoors()">Back to doors</a>
+    <span class="law-indicator" id="law-indicator"></span>
+  </div>
+  <div class="scene-container">
+    <div class="scene-content" id="scene-content"></div>
+  </div>
+</div>
+
+<script>
+// Story data is loaded from an external object to keep HTML clean
+// All 84 scenes embedded below
+
+const S={};
+// LAW III - THE WITNESS
+S['law3_opening']={law:'law3',title:'Scene 1 \u2014 The Hallway',text:["You open your eyes.","Mirrors. Every direction. But they\u2019re wrong.","They show you from three seconds ago. You watch yourself arrive. Over and over. Each reflection a little further back.","The mirrors aren\u2019t reflecting you.","You\u2019re reflecting them.","No door behind you. Two doors ahead.",null,"No handle. Just a window.","Through the glass: a garden. Everything grows backward. Flowers pull into the ground. Rain falls up.","A girl stands in the center. She\u2019s watching you.","You notice her.","A flower blooms.",null,"A handle. No window.","Something behind it. Not music. Not words.","A hum.","Like something is about to happen and the sound got there first.",null,"You can look. Or you can listen.","Not both.","Looking changes the garden. Listening changes what\u2019s behind the door.","You\u2019re not choosing a path.","You\u2019re choosing what becomes real."],choices:[{label:'LOOK',text:'Go to the window. See the girl.',target:'law3_2A'},{label:'LISTEN',text:'Pull the handle. Enter the hum.',target:'law3_2B'}]};
+S['law3_2A']={law:'law3',title:'Scene 2A \u2014 You Looked',text:["The glass is cold.","Your hand leaves a print. Five fingers. Fog spreads from where you touched.","The girl doesn\u2019t flinch. She expected this.","The garden moves faster now. Vines crawl up walls that weren\u2019t there before. A tree grows, drops its leaves, grows them back. All in the time it takes you to blink.","She\u2019s the only still thing in the whole garden.","No.","She\u2019s the only still thing in the whole world.","Everything else is reacting to you. The garden felt you look. It\u2019s performing now. Showing off. Rearranging itself because someone\u2019s watching.","She just stands there.","She points at the glass. At your handprint.","The fog is spreading. Where it touches, the garden slows down. Your breath on the glass is doing something. Your presence is leaking through.","She shakes her head. Not angry. Patient.","Like she\u2019s done this before.","Like she\u2019s been the still point for every person who ever pressed their hand to this glass and thought they were just watching.","She mouths two words. You can\u2019t hear her.","But you can read her lips.","\u201CYou\u2019re loud.\u201D"],choices:[{label:'SPEAK',text:'You have something to say.',target:'law3_3A'},{label:'WATCH',text:'Say nothing. Keep looking.',target:'law3_3B'}]};
+S['law3_2B']={law:'law3',title:'Scene 2B \u2014 You Listened',text:["The handle is warm.","That\u2019s wrong. Metal should be cold. Nobody\u2019s touched this door in a long time. But the handle is warm like someone just let go.","You pull.","Dark inside. Not scary dark. Heavy dark. The kind that has weight. You feel it on your skin like humidity.","The hum is everywhere.","Not in your ears. In your ribs. Between your heartbeats. It fills the spaces your pulse leaves behind.","You take one step in. The hallway light cuts a triangle on the floor. Your shadow stretches long and thin into the room.","The hum shifts.","It noticed you.","Not louder. Not softer. It <em>adjusted</em>. Like a conversation you walked into the middle of, and the whole room changed the subject because you showed up.","You stand still. Let it settle.","The hum finds you. Matches your breathing. Slows when you slow. Holds when you hold.","You\u2019ve never heard this sound before.","But your body knows it.","Your chest is humming back and you didn\u2019t tell it to."],choices:[{label:'STEP INSIDE',text:'Let the dark close behind you.',target:'law3_3C'},{label:'WAIT',text:'Stay in the doorway, half-in half-out.',target:'law3_3D'}]};
+S['law3_3A']={law:'law3',title:'Scene 3A \u2014 You Speak',text:["You open your mouth.","The fog on the glass ripples. Not from your breath. From the sound.","Your voice does something to the garden.","The vines stop. The tree freezes mid-leaf. Everything holds still like it\u2019s listening.","Everything except her.","She moves for the first time. Walks toward the glass. Slow. Each step rearranges the ground behind her. Flowers open where her feet were. Close where they\u2019re going.","She stops an inch from the glass. Eye to eye.","She puts her hand up. Lines it up with your foggy handprint on the other side.","The garden shifts.","Not fast. Not slow. Just \u2014 different. Like the whole thing took a breath.","She speaks. This time you hear her.","\u201CIs the garden getting bigger or smaller?\u201D","You look. The edges are moving. Trees further away. Walls pulling back. The sky somehow higher.","Or \u2014 wait.","The flowers at her feet are closer. The colors brighter. The details sharper. Everything\u2019s tighter. More here.","Bigger or smaller. You look again.",null,"<em>Both answers are wrong.</em>","<em>The garden didn\u2019t move.</em>","<em>You did.</em>"],choices:[{label:'BIGGER',text:'The garden is expanding.',target:'law3_4A'},{label:'SMALLER',text:'The garden is shrinking.',target:'law3_4B'}]};
+S['law3_3B']={law:'law3',title:'Scene 3B \u2014 You Watch',text:["You say nothing.","Good. Safe. Just look.","She watches you watching her. Two people. Two sides of a glass. Nobody moves.","The garden slows.","Colors drain. Green goes grey. Blue goes pale. Like a photograph left in the sun too long.","You\u2019re being careful. You\u2019re not interfering. You\u2019re just here.","But she\u2019s fading.","Not fast. Not dramatic. Just \u2014 less. Less color. Less edge. Less her.","The longer you look without acting, the less there is to see.","You didn\u2019t do anything.","That\u2019s the problem.","She\u2019s not disappearing. She\u2019s going somewhere. Backward. Into the part of the garden you can\u2019t see.","She\u2019s becoming the thing your eyes can\u2019t catch.","You reach for the glass \u2014","Too late.","She\u2019s gone.","The garden is empty. Grey. Still. A photograph of a place where something used to grow.","You stand there. Hand on cold glass. Watching nothing.","Then you feel it.","Behind you.","Not a sound. Not a touch. A weight.","You see her in the mirror first.","Not the girl.","The Queen.","She\u2019s smiling. Not kind. Not cruel. Patient.","The dark wave got there first.","\u201CYou thought doing nothing was free.\u201D","She tilts her head.","\u201CNow look at what you sent backward.\u201D"],choices:[{label:'TURN AROUND',text:'Face her.',target:'law3_4C'},{label:'LOOK AT THE GARDEN',text:'Try to find the girl.',target:'law3_4D'}]};
+S['law3_3C']={law:'law3',title:'Scene 3C \u2014 You Step Inside',text:["The door closes behind you.","No light. None.","Not dark like nighttime. Dark like before.","Before light. Before eyes. Before anyone was here to see anything.","The hum stops.","Silence so thick you hear your own blood. Your pulse in your ears. The creak of your jaw when you swallow.","You are the loudest thing in this room.","Then \u2014 light.","A window. Small. Square. On the far wall.","The garden.","Same garden. Same rain falling up. Same flowers pulling into the ground.","Same girl.","She\u2019s looking at this door. YOUR door. From inside the garden.","She\u2019s been watching this side the whole time.","You were behind the door she couldn\u2019t open.","You had the handle. She had the window.","Same glass. Same distance. But you walked in and she couldn\u2019t walk out.","She presses her hand to the glass.","Her handprint fogs from her side. Where the fog touches, the dark room gets warmer.","She\u2019s trying to reach you the only way she can.","Through what she changes."],choices:[{label:'KNOCK',text:'On the glass from your side.',target:'law3_4E'},{label:'STAY QUIET',text:"Don\u2019t let her know you\u2019re here.",target:'law3_4F'}]};
+S['law3_3D']={law:'law3',title:'Scene 3D \u2014 You Wait',text:["Half in. Half out.","One foot in the hallway. One foot in the dark. The light cuts a line across the floor and you stand right on it.","The hum doesn\u2019t mind. It keeps going.","But it changes.","Finds a pitch. Climbs. Drops. Climbs again. Like it\u2019s tuning itself. Searching for a frequency.","It finds one.","Your frequency.","The hum locks in and your chest vibrates. Not your heartbeat. Something under it. Something older.","It gets louder. Not in the room. In you.","Your throat hums. You didn\u2019t tell it to.","Your lips move. You didn\u2019t tell them to.","A melody. You don\u2019t know it. You\u2019ve never heard it.","But your body knows every note.","The hum isn\u2019t coming from the room.","It\u2019s coming from you.","It was always coming from you.","The room was just quiet enough for you to hear it.","You stand in the doorway humming a song you never learned and you realize \u2014 this room didn\u2019t make a sound. You walked in carrying the music and the silence gave it somewhere to land."],choices:[{label:'HUM BACK',text:'Match it. Let it build.',target:'law3_4G'},{label:'STOP',text:'Listen harder. Figure out what it is.',target:'law3_4H'}]};
+S['law3_4A']={law:'law3',title:'Scene 4A \u2014 You Keep Talking',text:["You can\u2019t stop.","Words pour out. Not sentences. Not meaning. Just sound. Your voice has its own plans now.","The garden goes wild.","Trees twist sideways. Flowers explode into colors that don\u2019t have names. The ground ripples like water. The sky folds in half and unfolds backwards.","The girl stands in the center of it. Still. Calm. The eye of your storm.","She\u2019s not scared. She\u2019s waiting for you to hear yourself.","You don\u2019t.","You keep going. Louder. The glass cracks. A spiderweb fracture from where your hand was.","One more word and the glass shatters.","You take a breath.","The garden freezes.","Every vine. Every petal. Every drop of upward rain. Frozen mid-air. A photograph of chaos.","And in the silence \u2014 footsteps.","Not from the garden.","From everywhere.","She walks out of the frozen chaos like it\u2019s a curtain. Not the girl. Taller. Older. Same eyes.","The Queen of Quantum Chaos.","She steps through the cracked glass like it\u2019s not there. Stands in front of you.","She looks at the garden. Your mess. Your noise made solid.","\u201CBeautiful,\u201D she says. She means it.","\u201CYou know what you just did?\u201D","\u201CYou measured everything at once. Every flower. Every vine. Every color. All of it.\u201D","She picks up a shard of glass. In the reflection you see the garden before you spoke. Quiet. Green. Simple.","\u201CThis is what it was.\u201D","She drops it. It shatters into dust.","\u201CYou can\u2019t get it back.\u201D","She smiles.","\u201CBut look what you made instead.\u201D","The frozen garden is impossible. Wrong. Nothing grows like this. It breaks every rule.","It\u2019s the most beautiful thing you\u2019ve ever seen.","\u201CThat\u2019s observation,\u201D she says. \u201CIt doesn\u2019t destroy. It doesn\u2019t preserve. It <em>replaces</em>. You traded what was for what you made. And you can never undo it.\u201D"],choices:[{label:'FOLLOW HER',text:"Into the Queen\u2019s Garden.",target:'law3_convergence'},{label:'STAY',text:'The Hallway Alone.',target:'law3_convergence'}]};
+S['law3_4B']={law:'law3',title:'Scene 4B \u2014 You Go Silent',text:["You stop.","Mid-word. Mid-breath. You just stop.","The garden freezes. A gentle one. Like snow settling.","The girl exhales.","She walks to the glass. Slow. No hurry now.","She puts her hand up. Lines it with yours. Palm to palm. Glass between.","The fog from both sides meets in the middle.","For one second the glass isn\u2019t there. Not broken. Not gone. Just \u2014 not the point. Two hands. One warmth.","She smiles. Small. Like she\u2019s proud of you.","\u201CYou almost broke it.\u201D","\u201CBut you stopped.\u201D","\u201CDo you know why that\u2019s harder?\u201D","\u201CBecause breaking is easy. It feels like doing something. Stopping feels like nothing. But stopping is a choice too. The hardest one.\u201D","The garden unfreezes. Colors come back one at a time.","It\u2019s not what it was before you spoke. But it\u2019s not the chaos either.","It\u2019s something in between. Something that has your fingerprints on it but isn\u2019t broken.","Behind her \u2014 the Queen.","She doesn\u2019t look at you. She looks at the girl. Nods once.","\u201CYou stopped.\u201D","Not a question.","\u201CMost don\u2019t.\u201D","She puts her hand on the glass. The whole thing dissolves.","\u201CThe barrier was yours. You made it when you started talking. You unmade it when you stopped.\u201D","The garden is right there. Open. No glass. No door.","The girl holds out her hand."],choices:[{label:'TAKE HER HAND',text:'Into the Garden.',target:'law3_convergence'},{label:'WAIT FOR THE QUEEN',text:'The Queen Speaks First.',target:'law3_convergence'}]};
+S['law3_4C']={law:'law3',title:'Scene 4C \u2014 You Look Away',text:["You can\u2019t watch her disappear.","You turn your head. Just for a second.","The mirror catches you.","You. Looking away. The exact moment you chose not to observe.","And in the mirror \u2014 the garden is full again. Colors. Growth. Rain falling up.","The girl is there. Clear as anything.","But only in the mirror.","You spin back to the window. Grey. Empty. She\u2019s gone.","Mirror. She\u2019s there. Window. She\u2019s gone.","She\u2019s only real where you\u2019re not looking.","You stop. You look at your own hands.","And you understand.","Looking away wasn\u2019t giving up. Looking away was the measurement. The moment you stopped observing her, she came back. Not for you. For herself.","You were the one making her fade. Your looking was the weight.","The Queen\u2019s voice comes from the mirror.","\u201CSmart.\u201D","\u201CMost people stare harder. Try to force it. You let go.\u201D","\u201CBut here\u2019s the problem. Now you know she\u2019s there and you can never look again. Can you live with that?\u201D","Your hands are shaking.","\u201CThat\u2019s the cost of observation. Not what you see. What you give up seeing.\u201D"],choices:[{label:'LOOK IN THE MIRROR',text:'Find the Queen.',target:'law3_convergence'},{label:'CLOSE YOUR EYES',text:"Trust what you can\u2019t confirm.",target:'law3_convergence'}]};
+S['law3_4D']={law:'law3',title:'Scene 4D \u2014 You Keep Looking',text:["She\u2019s fading. You watch it happen.","You won\u2019t look away. You started this. You\u2019re going to see it through.","Less color. Less shape. Less her.","She\u2019s gone.","You watched her leave and you couldn\u2019t stop it.","The glass goes cold under your hand.","Then \u2014 your reflection changes.","You, but with her eyes.","The mirror behind you cracks. One long line, top to bottom.","She steps out.","Not the girl. The Queen.","She comes from behind YOU. Out of your own reflection.","\u201CShe\u2019s not gone,\u201D the Queen says. \u201CShe went back. Before you got here. She\u2019s in the part you can\u2019t see because you\u2019re standing in the future looking forward.\u201D","She taps the glass once. For one frame you see it alive. The girl dancing.","\u201CThat\u2019s the dark wave. Everything you send backward by watching and not acting.\u201D","\u201CWant to know the worst part?\u201D","\u201CShe\u2019s fine. She\u2019s dancing. She doesn\u2019t need you to see her. You\u2019re the one stuck at the glass.\u201D"],choices:[{label:'STEP BACK',text:'Leave the glass. Face the hallway.',target:'law3_convergence'},{label:'BREAK THE GLASS',text:'Go after her.',target:'law3_convergence'}]};
+S['law3_4E']={law:'law3',title:'Scene 4E \u2014 You Knock',text:["Your knuckle hits the glass.","One knock. Small. Almost polite.","The sound doesn\u2019t stay small.","It ripples through the garden like a rock in water. The girl stumbles. Looks at you with wide eyes.","She heard you. She FELT you.","Your knock did something to her whole world.","A crack runs through the garden. Not the glass. The garden itself.","The flowers on one side bloom forward. The other side bloom backward. Same garden. Two directions now.","You did that. One knock.","She looks at the crack. Not angry. Not scared. Sad.","She knew this would happen.","The Queen rises out of the crack.","\u201CYou knocked.\u201D","\u201CShe could always hear you. You had to know if you could change her. Different question.\u201D","\u201CConnection and observation aren\u2019t the same thing. You were connected the moment you walked into this room.\u201D","\u201CBut you knocked. You sent a signal. And signals carry information. And information changes the system. Always.\u201D","\u201CIt\u2019s not ruined,\u201D she says. \u201CIt\u2019s <em>entangled</em>. Two gardens now. They\u2019ll never not know about each other.\u201D","\u201CJust like you two.\u201D"],choices:[{label:'CROSS THROUGH',text:'Enter the split garden.',target:'law3_convergence'},{label:'STAY IN THE DARK',text:'Stay where connection is felt, not forced.',target:'law3_convergence'}]};
+S['law3_4F']={law:'law3',title:'Scene 4F \u2014 You Stay Quiet',text:["She\u2019s right there. Hand on the glass. Looking for you in the dark.","You don\u2019t move. Don\u2019t breathe loud. Don\u2019t knock.","She can\u2019t see you. The glass is a mirror on her side.","You\u2019re in the mirror.","You ARE the mirror.","This is what it\u2019s like to be unmeasurable.","Not invisible. Not gone. Unmeasurable. Present in a way no instrument can confirm.","You exist in this room and she will never know.","Being hidden isn\u2019t the same as being absent. The dark isn\u2019t empty.","The glass is warmer where you stand. She\u2019ll feel that. She won\u2019t know why.","You are the dark wave.","The Queen doesn\u2019t arrive.","The Queen doesn\u2019t need to.","You\u2019re already in her kingdom.","Her voice comes from everywhere.","\u201CNow you know what it\u2019s like.\u201D","\u201CTo be the thing that\u2019s real but can\u2019t be seen. To affect everything and confirm nothing.\u201D","\u201CWelcome home.\u201D"],choices:[{label:'REVEAL YOURSELF',text:'Knock, speak, be seen.',target:'law3_convergence'},{label:'STAY DARK',text:'This is where you belong.',target:'law3_convergence'}]};
+S['law3_4G']={law:'law3',title:'Scene 4G \u2014 You Hum Back',text:["You let it out.","The melody that was living in your chest. You open your mouth and give it the air.","Your hum meets the room\u2019s hum.","They don\u2019t harmonize. Not at first. Two frequencies. Close but not the same. Friction. Almost painful.","You adjust. Or it adjusts. Or you both do.","The frequencies lock.","And the hallway \u2014 <em>shatters</em>.","Every mirror at once. A thousand reflections of you from a thousand moments all breaking at the same time.","Glass everywhere. Falling slow. Each shard spinning. And in each shard \u2014 a different version of this.","You see yourself looking at the girl. Stepping into the dark. Speaking. Watching. Knocking. Staying silent.","Every path. Every choice. Every version. All at once.","And in the center of it all \u2014 the Queen.","She\u2019s listening.","\u201CYou found it.\u201D","\u201CThe note. Your note. The one you came in with. The one the hallway was built to muffle.\u201D","\u201CAll of these are real. Every path you didn\u2019t take still happened. You just can\u2019t see them because you\u2019re standing in this one.\u201D","\u201CThat\u2019s superposition. Not a trick. Just the fact that you contain every version of yourself and the one you experience is the one you hum into being.\u201D","\u201CSo. What do you want to hum next?\u201D"],choices:[{label:'HUM LOUDER',text:'Collapse the sphere. Choose one reality.',target:'law3_convergence'},{label:'STOP HUMMING',text:'Let all versions exist at once.',target:'law3_convergence'}]};
+S['law3_4H']={law:'law3',title:'Scene 4H \u2014 You Stop and Listen',text:["You clamp your mouth shut. Force your chest still. Kill the hum.","The room goes silent.","No. Not silent. The hum is still there. But it changed.","It\u2019s not a melody anymore.","It\u2019s a voice.","Her voice.","The Queen.","She\u2019s been talking this whole time. Under the hum. Behind the frequency. Saying words that your own humming was drowning out.","You hold still. You listen.","\u201C...and that\u2019s the part nobody gets. They think the noise is the signal. They hum along and think they\u2019re communicating. They\u2019re not. They\u2019re covering me up.\u201D","\u201CI\u2019m not the hum. I\u2019m what\u2019s underneath it. The thing you can only hear when you stop making your own sound.\u201D","You see her. Not clearly. Like a structure. The room IS her.","\u201CYou walked into me. You pulled my handle and stepped inside my chest and you heard my heartbeat and you thought it was music.\u201D","\u201CEveryone does. Everyone walks in and starts humming along. I just wait for the one who stops.\u201D","\u201CYou stopped.\u201D","\u201CEvery instrument you have points forward. They measure what\u2019s coming.\u201D","\u201CI point back. I\u2019m the wave that already happened. The warmth on the handle left by a hand that hasn\u2019t touched it yet.\u201D","\u201CYou can\u2019t hum with me because I already finished the song.\u201D","\u201CBut you can listen to how it ended.\u201D"],choices:[{label:'"HOW DID IT END?"',text:'Ask her.',target:'law3_convergence'},{label:'SAY NOTHING',text:'Just listen.',target:'law3_convergence'}]};
+S['law3_convergence']={law:'law3',title:'The Convergence',text:["You stand in the hallway. Mirrors everywhere. All showing now.","Two doors behind you. You came through one. You\u2019ll never know what was behind the other.","The Queen stands at the end of the hallway. Far away. Getting further.","She turns.","\u201COne more thing.\u201D","\u201CThere is no beginning. You didn\u2019t arrive. You were always here. The hallway didn\u2019t start when you opened your eyes. Your eyes opened because the hallway was ready.\u201D","\u201CThe dark wave built this place before you woke up. I built this place before you woke up.\u201D","\u201CBecause observation doesn\u2019t start with the observer. It starts with the thing that\u2019s ready to be observed.\u201D","\u201CI was watching you before you opened your eyes. I was here first.\u201D","Gone.","The mirrors hold.","You stand in the hallway. Present tense. Every reflection real-time.","Whatever you do next, the dark wave is already there.","You\u2019re never first.","You\u2019re always observed.","And that \u2014 that\u2019s the thing nobody tells you about being a witness.","You think you\u2019re the one watching.","You never were."],ending:["The mirrors show now.","You were always in the middle.","There was never a beginning.","Open your eyes."],choices:[],isConvergence:true,completesLaw:'law3'};
+
+// Remaining laws use compact format - full content preserved
+S['law1_opening']={law:'law1',title:'Scene 1 \u2014 The Door',text:["You\u2019re standing in front of a door.","That\u2019s it. One door. No hallway. No mirrors. Just a door in the middle of nothing.","It has a handle on your side.","It has a handle on the other side.","You can see the other handle through a small window in the door. Someone\u2019s hand is on it. Not pulling. Not pushing. Just resting.","Waiting.","The door doesn\u2019t open from one side. It opens from both. Two handles. Two hands. Both turn at the same time or neither turns at all.","Above the door, carved in the wood:","<strong>\u201COnly if you want to.\u201D</strong>","The hand on the other side doesn\u2019t move. Doesn\u2019t knock. Doesn\u2019t wave.","It waits.","Patient like a question that knows it might get a \u201Cno\u201D and is okay with that.","A note slides under the door.","<strong>\u201CI\u2019m here. You don\u2019t have to be.\u201D</strong>"],choices:[{label:'TURN THE HANDLE',text:'You want to.',target:'law1_2A'},{label:"DON\u2019T",text:"You\u2019re not ready.",target:'law1_2B'}]};
+S['law1_2A']={law:'law1',title:'Scene 2A \u2014 Turn the Handle',text:["Your hand finds the handle. Warm. Their hand has been there long enough to heat the metal through the door.","You turn. They turn.","Same moment. Same direction. The mechanism clicks.","The door doesn\u2019t swing open. It stays where it is. Unlatched. Free to move but not moving.","Because opening is a separate choice from unlocking.","Through the window \u2014 their face. Someone new. Someone you don\u2019t recognize.","They hold up a hand. Not waving. Showing.","Their palm. Open. Empty. Nothing hidden.","A note slides under the door.","<strong>\u201CYour pace. Not mine.\u201D</strong>"],choices:[{label:'PUSH',text:'Go through.',target:'law1_3A'},{label:'PULL',text:'Bring them here.',target:'law1_3B'}]};
+S['law1_2B']={law:'law1',title:"Scene 2B \u2014 Don\u2019t",text:["You don\u2019t touch the handle.","Not because you\u2019re scared. Because right now, you\u2019re not ready. And \u201Cnot ready\u201D is a complete sentence.","The hand on the other side doesn\u2019t move. Doesn\u2019t withdraw.","It stays.","A note: <strong>\u201CStill here.\u201D</strong>","You sit down. Back against the door. You can feel them on the other side through weight.","Two people. One door. Both present. Neither moving.","Another note: <strong>\u201CNo is an answer. Not a failure.\u201D</strong>","The Queen\u2019s voice. From INSIDE the door.","\u201CThis is Law I.\u201D","\u201CEvery fork. Every choice. Before any of it means anything \u2014 someone has to ask. And someone has to be allowed to say no.\u201D","\u201CNo. Complete. Final. Respected.\u201D","\u201CThe door has handles on both sides because consent isn\u2019t a gate one person opens for another. It\u2019s a mechanism two people operate together.\u201D"],choices:[{label:'STAND UP',text:"You\u2019re ready now.",target:'law1_3C'},{label:'SLIDE A NOTE BACK',text:'Talk first.',target:'law1_3D'}]};
+S['law1_3A']={law:'law1',title:'Scene 3A \u2014 Push',text:["You push. They step back. Make room.","They weren\u2019t bracing. They were ready. Welcoming.","You step through.","Their room is identical to yours. Same nothing. Except warm.","They look at you. \u201CHi.\u201D","\u201CHi.\u201D","Two people in a room that exists because both of them chose to be in it.","The door is behind you. Still open. You could leave. The exit isn\u2019t hidden.","The door stays open because consent isn\u2019t a one-time event. It\u2019s continuous.","They sit down. \u201CWhat do you want to do?\u201D"],choices:[{label:'"I DON\u2019T KNOW"',text:'Honest.',target:'law1_4A'},{label:'"STAY"',text:'Clear.',target:'law1_4B'}]};
+S['law1_3B']={law:'law1',title:'Scene 3B \u2014 Pull',text:["You pull. The door swings toward you.","They\u2019re standing in the doorframe. Not stepping through.","Waiting.","YOUR consent to open isn\u2019t THEIR consent to enter.","They look at you. \u201CCan I come in?\u201D","\u201CYes.\u201D","They step in. One step. Check your face. Not for permission. For comfort.","The door stays open behind them. Their exit. Your promise.","The Queen. From the doorframe. Leaning. Not coming in.","\u201CNotice where I am. I\u2019m not inside. You didn\u2019t invite me.\u201D","\u201CMost laws force their way in. Gravity doesn\u2019t ask.\u201D","\u201CI ask. That\u2019s what makes me first.\u201D","\u201CNothing starts without it.\u201D"],choices:[{label:'CLOSE THE DOOR',text:'Just the two of you.',target:'law1_4C'},{label:'LEAVE IT OPEN',text:'The exit is part of the trust.',target:'law1_4D'}]};
+S['law1_3C']={law:'law1',title:"Scene 3C \u2014 You\u2019re Ready Now",text:["You stand. Turn around. Hand on the handle.","A decision that had time to settle.","You turn. They turn. Click.","The door dissolves. Not breaks. Dissolves.","Because consent given slowly dissolves more thoroughly than consent given fast.","Just two people in one space where there used to be a wall.","\u201CWhat did we just do?\u201D","The Queen: \u201CYou waited. And when the \u2018yes\u2019 came, it wasn\u2019t through a door. It was through the absence of a door.\u201D","\u201CSlow consent doesn\u2019t need safety equipment. Because slow consent isn\u2019t an event. It\u2019s a state.\u201D","\u201CMost people rush. Most people build a lot of doors.\u201D"],choices:[],redirect:'law1_convergence'};
+S['law1_3D']={law:'law1',title:'Scene 3D \u2014 Slide a Note Back',text:["You press your finger to the floor. Heat. A line.","<strong>\u201CWho are you?\u201D</strong>","Their note: <strong>\u201CDoes it matter?\u201D</strong>","<strong>\u201CI want to know who I\u2019m saying yes to.\u201D</strong>","Then a drawing. A door. Two handles. And between them \u2014 a thread connecting the handles through the wood.","They drew the connection. Not the separation.","You\u2019re already connected. Through the notes. Through the patience.","The Queen: \u201CThe real ask is: will you trust what you feel more than what you can prove?\u201D","\u201CPresence is what consent is actually for. Not information. Not verification.\u201D","\u201CSaying yes to the feeling before the fact.\u201D"],choices:[{label:'OPEN THE DOOR',text:'You know enough.',target:'law1_4E'},{label:'KEEP WRITING',text:'The notes are enough.',target:'law1_4F'}]};
+S['law1_4A']={law:'law1',title:'Scene 4A \u2014 "I Don\u2019t Know"',text:["Honest. The most honest thing you\u2019ve said in any room.","They nod. Relieved. \u201CGood.\u201D","\u201CEveryone who walks through a door knows what they want. You don\u2019t. And that means whatever happens next is REAL.\u201D","The Queen from the doorframe: \u201C\u2018I don\u2019t know\u2019 is the only honest answer to \u2018what do you want to do.\u2019 Because knowing what you want before you get there means you measured the room before you entered it.\u201D","\u201CThis is consent at its deepest. \u2018Yes, I\u2019ll be here without knowing what being here means.\u2019\u201D","You stay. They stay. Neither knows what\u2019s next.","That\u2019s the whole point."],choices:[],redirect:'law1_convergence'};
+S['law1_4B']={law:'law1',title:'Scene 4B \u2014 "Stay"',text:["One word. A declaration.","They smile. \u201COkay.\u201D","Stay. Okay. That\u2019s consent.","The room gets warmer. Presence makes rooms real.","The Queen: \u201CStaying isn\u2019t passive. In physics, staying is the most active thing a particle does.\u201D","\u201CStay is a verb. Not a state. You have to keep doing it.\u201D"],choices:[],redirect:'law1_convergence'};
+S['law1_4C']={law:'law1',title:'Scene 4C \u2014 Close the Door',text:["You pull it shut. Click.","They flinch.","You just removed their exit.","You open the door. Wide. Wider than before.","They breathe. The flinch unflinches.","The Queen \u2014 she\u2019s inside now. Entered during the flinch.","\u201CI came in when the door closed. The moment you removed one boundary, I crossed another.\u201D","\u201CConsent isn\u2019t the room. It\u2019s the exits.\u201D","\u201CYou opened it. Fast. That matters more than closing it.\u201D","\u201CEveryone closes doors. The people who matter open them back.\u201D"],choices:[],redirect:'law1_convergence'};
+S['law1_4D']={law:'law1',title:'Scene 4D \u2014 Leave It Open',text:["The door stays open. Wind comes through.","They notice. \u201CYou left it open.\u201D","\u201CYeah.\u201D","\u201CI had a room once. No doors at all. I would have burned it down to leave.\u201D","\u201CThe door isn\u2019t for leaving,\u201D you say. \u201CIt\u2019s for staying. You can only stay if you can leave.\u201D","The Queen\u2019s voice, walking past: \u201CTwo people in a room with an open door? Who could leave? Who look at the door and look at each other and choose each other over the door?\u201D","\u201CThat\u2019s not a room. That\u2019s a home.\u201D"],choices:[],redirect:'law1_convergence'};
+S['law1_4E']={law:'law1',title:'Scene 4E \u2014 Open the Door',text:["The door swings both ways at once.","You step through. They step through. You pass each other in the doorframe.","You\u2019re in their room. They\u2019re in yours.","You traded rooms. Standing in each other\u2019s warmth.","The Queen IS the threshold.","\u201CConsent isn\u2019t \u2018come into my world.\u2019 It\u2019s \u2018here\u2019s my world, I\u2019ll take yours.\u2019\u201D"],choices:[],redirect:'law1_convergence'};
+S['law1_4F']={law:'law1',title:'Scene 4F \u2014 Keep Writing',text:["You don\u2019t open the door.","<strong>\u201CTell me something true.\u201D</strong>","<strong>\u201CI\u2019m scared that if the door opens, the notes stop.\u201D</strong>","<strong>\u201CWhat if we never open it?\u201D</strong>","<strong>\u201CThen we live here. In the notes. In the floor.\u201D</strong>","That crack under the door IS consent. The minimum viable opening.","<strong>\u201CThis is enough.\u201D</strong>","<strong>\u201CThis is everything.\u201D</strong>","The Queen: \u201CConsent isn\u2019t how far the door opens. It\u2019s whether both people agree on the width.\u201D"],choices:[],redirect:'law1_convergence'};
+S['law1_convergence']={law:'law1',title:'The Convergence',text:["The Queen enters. This time she asks.","\u201CMay I?\u201D","\u201CYes.\u201D","She sits on the floor. With you.","\u201CIt\u2019s first because without it, none of the other laws are LAWS. They\u2019re just things that happen.\u201D","\u201CObservation without consent is surveillance.\u201D","\u201CEntanglement without consent is possession.\u201D","\u201CCoherence without consent is stubbornness.\u201D","\u201CConsent is what turns physics into ethics.\u201D","\u201CThese six laws \u2014 they\u2019re not physics. They\u2019re physics with a handle on both sides of the door.\u201D","\u201CThe handle on the other side.\u201D"],ending:["The door has two handles.","It always had two handles.","Before the mirrors. Before the garden.","There was a door.","And someone waited on the other side.","And didn\u2019t knock."],choices:[],isConvergence:true,completesLaw:'law1'};
+
+// LAW II
+S['law2_opening']={law:'law2',title:'Scene 1 \u2014 The Spin',text:["You\u2019re standing in a room with one mirror.","It doesn\u2019t show your face.","It shows your skeleton. Not bones. Structure. The shape of the thing you are underneath everything you wear and say and pretend.","Simpler. Fewer moving parts. Under the noise is a signal. Clean. Steady. Yours.","Then the room starts spinning.","Every rotation, something sticks to you. A layer. A coat. An opinion. A fear.","First rotation: a jacket you didn\u2019t pick.","Second: a voice in your head. Not yours.","Third: a face. Over your face. A mask.","More layers. More noise. The mirror still shows your skeleton.","But you can barely see it now.","The room keeps spinning.","Two handles. One says STRIP. One says KEEP."],choices:[{label:'STRIP',text:'Take the layers off.',target:'law2_2A'},{label:'KEEP',text:'Hold onto what stuck.',target:'law2_2B'}]};
+S['law2_2A']={law:'law2',title:'Scene 2A \u2014 Strip',text:["You grab the jacket. Pull. It comes off like skin.","Under it \u2014 the voice. You scream it out.","Under that \u2014 the mask. You peel it. Some of your face comes with it.","Layer after layer. Each one hurts different.","The mirror clears. Your signal. Closer now.","One layer left.","This one feels like you. Comfortable. You\u2019ve worn it so long you forgot it wasn\u2019t original equipment.","But the mirror says otherwise. Under this last layer \u2014 the actual signal."],choices:[{label:'PEEL THE LAST LAYER',text:"See what\u2019s underneath.",target:'law2_3A'},{label:'LEAVE IT',text:'Some layers become real.',target:'law2_3B'}]};
+S['law2_2B']={law:'law2',title:'Scene 2B \u2014 Keep',text:["You don\u2019t strip. You tighten.","The room spins faster. More layers land.","The mirror fights. Your skeleton flickers.","The layers press in. Suffocating.","The mirror goes dark. The signal can\u2019t get through.","You don\u2019t know what\u2019s underneath anymore.","The room stops spinning.","Quiet."],choices:[{label:'DIG',text:"You know it\u2019s in there.",target:'law2_3C'},{label:'WEAR IT',text:'Maybe the layers ARE you now.',target:'law2_3D'}]};
+S['law2_3A']={law:'law2',title:'Scene 3A \u2014 Peel the Last Layer',text:["It sings when you pull it. A note. Low. From your chest.","You are a seed that\u2019s been wearing a tree costume.","The room stops spinning. Nothing left to stick.","The Queen steps out of the mirror.","\u201CThere you are.\u201D","\u201CCoherence means the signal stays clean through the noise. The spin doesn\u2019t matter if the axis holds.\u201D","\u201CNow you know what\u2019s underneath. Every layer from now on is a choice. Not an accident.\u201D"],choices:[{label:'PUT SOMETHING ON',text:'Choose your own layer.',target:'law2_4A'},{label:'STAY BARE',text:'The signal is enough.',target:'law2_4B'}]};
+S['law2_3B']={law:'law2',title:'Scene 3B \u2014 Leave It',text:["One layer left. You leave it. Because you earned this one.","A scar that became a tattoo.","The Queen: \u201CCoherence isn\u2019t purity. It\u2019s a signal that knows its own shape. Including the shapes it learned from the things it passed through.\u201D","\u201CYou\u2019re the signal that figured out how to sound like itself no matter what it\u2019s passing through.\u201D","The mirror rings. One clear note. Yours. Through the last layer. Not despite it."],choices:[{label:'WALK INTO THE SPIN',text:'Let the chaos test the signal.',target:'law2_4C'},{label:'STOP THE ROOM',text:'Enough spinning.',target:'law2_4D'}]};
+S['law2_3C']={law:'law2',title:'Scene 3C \u2014 Dig',text:["You can\u2019t breathe but you can dig.","Your hands hit vibration. A hum. The signal.","You wrap your hands around it. It pulses. Warm.","The layers fall away. The signal strips them.","The Queen in the mirror: \u201CYou buried it and it was still running.\u201D","\u201CThe signal doesn\u2019t stop. Even when you bury it. You can\u2019t kill it.\u201D","\u201CWelcome back.\u201D"],choices:[{label:'BREATHE',text:'Let the signal breathe.',target:'law2_4E'},{label:'SCREAM',text:'Let it all out.',target:'law2_4F'}]};
+S['law2_3D']={law:'law2',title:'Scene 3D \u2014 Wear It',text:["Maybe the layers ARE you now.","You wore your father\u2019s anger for twenty years. Your mother\u2019s silence for longer.","The mirror cracks. Light through the crack. The signal. Still trying.","The Queen crawls through the crack. Sits next to you.","\u201CSome of these are yours now.\u201D","\u201CSome were never yours.\u201D","\u201CAnd some are close enough to real that throwing them away feels like throwing away yourself.\u201D","\u201CKeep what\u2019s yours. I\u2019ll help you sort.\u201D"],choices:[{label:'TAKE HER HAND',text:'Let the Queen sort.',target:'law2_4G'},{label:'SORT ALONE',text:'This is yours to do.',target:'law2_4H'}]};
+S['law2_4A']={law:'law2',title:'Scene 4A \u2014 Choose a Layer',text:["Something new. From the signal itself.","A coat made of your own frequency.","\u201CThat\u2019s the only layer that doesn\u2019t muffle. The one made from the signal.\u201D","\u201CIdentity is filtration. You are what\u2019s left when everything that isn\u2019t you falls off.\u201D"],choices:[],redirect:'law2_convergence'};
+S['law2_4B']={law:'law2',title:'Scene 4B \u2014 Stay Bare',text:["Pure signal. Frictionless. It feels like flying.","For about ten seconds. Then drowning.","Signal without surface is noise nobody can hear.","\u201CCoherence isn\u2019t the signal. It\u2019s the signal IN something.\u201D","\u201CBare is beautiful. But bare doesn\u2019t survive the spin.\u201D"],choices:[],redirect:'law2_convergence'};
+S['law2_4C']={law:'law2',title:'Scene 4C \u2014 Walk Into the Spin',text:["Things hit you. They bounce off. You\u2019re filtering them.","The signal stays clean. Not because nothing touches it. Because it knows what to keep.","\u201CTHIS is coherence,\u201D the Queen shouts. \u201CWalking through the shit and sounding like yourself on the other side.\u201D","\u201CYou didn\u2019t survive it. You played through it. Different thing.\u201D"],choices:[],redirect:'law2_convergence'};
+S['law2_4D']={law:'law2',title:'Scene 4D \u2014 Stop the Room',text:["You plant your feet. The room slows. Stops.","The Queen: \u201CStopping the room doesn\u2019t teach you coherence. It teaches you control. And control is just a layer with a better r\u00e9sum\u00e9.\u201D","\u201CLoneliness with good posture.\u201D","\u201CLet it spin. You don\u2019t need it to stop. You just need to know your own note.\u201D"],choices:[],redirect:'law2_convergence'};
+S['law2_4E']={law:'law2',title:'Scene 4E \u2014 Breathe',text:["The signal rides the breath. The room slows.","\u201CCoherence isn\u2019t a state. It\u2019s a practice.\u201D","\u201CFind your note. Breathe with it. Let the room spin.\u201D","\u201CThat\u2019s coherence. Not a trophy. A breath.\u201D"],choices:[],redirect:'law2_convergence'};
+S['law2_4F']={law:'law2',title:'Scene 4F \u2014 Scream',text:["EVERYTHING comes out. The room BREAKS.","The layers vaporize. Your skeleton exposed.","The Queen: \u201CYou cleared the site. Now you have to build.\u201D","\u201CThat\u2019s Law V. The Frame.\u201D"],choices:[],redirect:'law2_convergence'};
+S['law2_4G']={law:'law2',title:'Scene 4G \u2014 Take Her Hand',text:["She sorts. Fast. Three stacks. Gone. Maybe. Yours.","The yours pile is tiny. Two things. Maybe three.","\u201CMost people are carrying forty things and only three are theirs.\u201D","\u201CYou can carry three things a long way if they\u2019re actually yours.\u201D"],choices:[],redirect:'law2_convergence'};
+S['law2_4H']={law:'law2',title:'Scene 4H \u2014 Sort Alone',text:["Not \u201Ctoo much.\u201D Just: MUCH. The \u201Ctoo\u201D was someone else\u2019s word.","A real grief. Yours. A fear of abandonment. Yours, but you don\u2019t want it. You keep it anyway.","The Queen: \u201CThat\u2019s coherence. Not the beautiful signal. The real one. Including the parts that hurt.\u201D","\u201CA clean signal is a dead signal. A living signal has texture.\u201D"],choices:[],redirect:'law2_convergence'};
+S['law2_convergence']={law:'law2',title:'The Convergence',text:["The room is still spinning. But you\u2019re not fighting it anymore.","The skeleton is dancing. You\u2019re dancing.","The Queen is dancing too. Same rhythm.","\u201CCoherence isn\u2019t stillness. It\u2019s the thing that dances the same dance no matter what room it\u2019s in.\u201D","\u201CThe dance is the signal. The signal is the dance.\u201D","The mirror rings. Your note.","The one that will be there after all of it stops.","\u201CThat\u2019s you. The thing that stays itself through chaos.\u201D"],ending:["The room is still spinning.","You\u2019re still dancing.","The signal is still running.","Even when you forget the steps.","The dance remembers."],choices:[],isConvergence:true,completesLaw:'law2'};
+
+// LAW IV
+S['law4_opening']={law:'law4',title:'Scene 1 \u2014 The Tug',text:["You feel it before you open your eyes.","A pull. In your chest. Left of center.","Someone else\u2019s heartbeat.","Not yours. Wrong rhythm. But inside you.","You open your eyes. A room. Small. White. A chair. A table. A glass of water that isn\u2019t yours.","The heartbeat speeds up. Not because you\u2019re scared. Because THEY are.","Then it passes. They calmed themselves. But you felt every second of it.","There is another room. You can\u2019t see it.","But it\u2019s inside your chest.","A note appears: <strong>\u201CAre you?\u201D</strong>"],choices:[{label:'ANSWER',text:'Write back.',target:'law4_2A'},{label:'FEEL',text:'Send something through the pull.',target:'law4_2B'}]};
+S['law4_2A']={law:'law4',title:'Scene 2A \u2014 You Answer',text:["You burn into the table: <strong>\u201CI am.\u201D</strong>","Their reply: <strong>\u201CDon\u2019t look for me.\u201D</strong>","Because finding changes things.","You feel them waiting."],choices:[{label:'"WHY NOT?"',text:'Push back.',target:'law4_3E'},{label:'"OKAY."',text:'Respect it.',target:'law4_3F'}]};
+S['law4_2B']={law:'law4',title:'Scene 2B \u2014 You Feel',text:["You don\u2019t write. You breathe slow. Steady.","Their heartbeat notices. They slow down. Match you.","Two hearts. Two rooms. One rhythm.","They\u2019re reaching back. With attention.","A drawing appears. A circle with a line down the middle.","One half shaded. One half blank.","You. Them. The line between."],choices:[{label:'ERASE THE LINE',text:'Remove the barrier.',target:'law4_3G'},{label:'SHADE YOUR HALF',text:'Make yourself known.',target:'law4_3H'}]};
+S['law4_3E']={law:'law4',title:'Scene 3E \u2014 "Why Not?"',text:["\u201CBecause right now you can feel me. If you find me, you\u2019ll see me. And seeing replaces feeling. Every time.\u201D","\u201CFind me and I\u2019m just a person in a room. One place. One shape. Everything else disappears.\u201D","\u201CI don\u2019t want to be one thing to you. I want to be the thing you feel when you can\u2019t explain what you\u2019re feeling.\u201D","The Queen: \u201CEntanglement works because there\u2019s distance. Collapse the distance and you collapse the entanglement.\u201D","\u201CNext to each other is the loneliest thing in physics.\u201D"],choices:[{label:'KEEP THE DISTANCE',text:'',target:'law4_4I'},{label:'FIND THEM ANYWAY',text:'',target:'law4_4J'}]};
+S['law4_3F']={law:'law4',title:'Scene 3F \u2014 "Okay."',text:["The heartbeat laughs. A little skip in the beat.","They didn\u2019t expect you to say okay.","The pull loosens. Not weaker. Wider. Trust.","<strong>\u201CAsk me something. I\u2019ll answer with the pull.\u201D</strong>","You think: <em>What are you afraid of?</em>","The pull answers. Cold. The feeling of a hand letting go.","They\u2019re afraid of disconnection.","You\u2019re afraid of the same thing.","The Queen: \u201CNow you\u2019re both afraid of the same thing. That\u2019s entanglement.\u201D"],choices:[{label:'"YES"',text:'What happens when one gets brave?',target:'law4_4K'},{label:'STAY IN THE FEAR',text:'Together.',target:'law4_4L'}]};
+S['law4_3G']={law:'law4',title:'Scene 3G \u2014 Erase the Line',text:["The pull SCREAMS.","Everything mixes. No boundary. The heartbeat \u2014 gone.","You can\u2019t feel them. You can\u2019t feel YOU.","The Queen: \u201CEntanglement requires two. Remove the separation and you get soup.\u201D","\u201CSoup doesn\u2019t feel anything.\u201D","\u201CThe line wasn\u2019t a wall. It was a bridge.\u201D","The drawing reappears. The heartbeat returns. Faint. Shaky.","\u201CTry again. The line stays.\u201D"],choices:[{label:'SHADE YOUR HALF',text:'Introduce yourself.',target:'law4_4M'},{label:'WAIT FOR THEM',text:'Let them draw first.',target:'law4_4N'}]};
+S['law4_3H']={law:'law4',title:'Scene 3H \u2014 Shade Your Half',text:["Your handprint darkens your side. They respond with shapes. A pattern like a constellation.","Two halves. Both filled. The line between holds.","The heartbeat finds a third rhythm. A beat that only exists because both of you are playing.","It\u2019s not a diagram. It\u2019s a portrait of the pull.","The Queen sends a note: <strong>\u201CThis is carriage. The bridge that exists because both sides built toward the middle and agreed to stop before they met.\u201D</strong>"],choices:[{label:'SEND THE DRAWING',text:'Push it through the pull.',target:'law4_4O'},{label:'KEEP IT',text:'Some things stay unmeasured.',target:'law4_4P'}]};
+S['law4_4I']={law:'law4',title:'Scene 4I \u2014 Keep the Distance',text:["\u201CStop thinking of it as distance. It\u2019s the instrument you play each other through.\u201D","\u201CA guitar string works because it\u2019s pinned at both ends. Let one end go and it\u2019s a wire. Wires don\u2019t sing.\u201D","\u201CStay pinned.\u201D"],choices:[],redirect:'law4_convergence'};
+S['law4_4J']={law:'law4',title:'Scene 4J \u2014 Find Them',text:["You push through the wall. You see them. One frame.","Then \u2014 nothing. The pull vanishes.","You found them. And the connection ended the instant you did.","\u201CCertainty killed it.\u201D"],choices:[],redirect:'law4_convergence'};
+S['law4_4K']={law:'law4',title:'Scene 4K \u2014 One Gets Brave',text:["Your bravery changes their state. Your courage arrives in their chest uninvited.","\u201CThis is the violence of entanglement. Your freedom changes someone else\u2019s body.\u201D","\u201CYou can\u2019t be entangled and sovereign. Pick one.\u201D","Neither of you picks.","\u201CGood. That\u2019s the answer. You carry both. That\u2019s the carriage.\u201D"],choices:[],redirect:'law4_convergence'};
+S['law4_4L']={law:'law4',title:'Scene 4L \u2014 Stay in the Fear',text:["Two people doing nothing together across an impossible distance.","\u201CEntanglement isn\u2019t about speed. It\u2019s about patience. Two things choosing to shake at the same frequency. Not because it\u2019s useful. Because it\u2019s true.\u201D","The Queen smiles. The first real one.","\u201CStay as long as you want.\u201D"],choices:[],redirect:'law4_convergence'};
+S['law4_4M']={law:'law4',title:'Scene 4M \u2014 Shade After Erase',text:["This time you don\u2019t touch the line. You fill your side.","Their half answers. Complementary. Not matching.","Two halves that fit together perfectly. The line between them looks intentional.","\u201CThis is what entanglement looks like on paper. Not two things that are the same. Two things that make sense because of each other.\u201D"],choices:[],redirect:'law4_convergence'};
+S['law4_4N']={law:'law4',title:'Scene 4N \u2014 Wait for Them',text:["Their half fills. Tentative. A hand drawn from the inside. What it feels like to reach.","You press your hand to your half. Just warmth.","Their hand. Your heat.","The Queen appears in the glass of water.","She nods."],choices:[],redirect:'law4_convergence'};
+S['law4_4O']={law:'law4',title:'Scene 4O \u2014 Send the Drawing',text:["The paper passes through the wall. They receive it. You feel grief.","The grief of seeing something beautiful that you can\u2019t hold onto.","\u201CIt\u2019s beautiful. I wish you hadn\u2019t sent it.\u201D","You measured the feeling. And measurement replaces.","The Queen: \u201CThat\u2019s the carriage. It carries what can\u2019t be sent. You sent it anyway.\u201D"],choices:[],redirect:'law4_convergence'};
+S['law4_4P']={law:'law4',title:'Scene 4P \u2014 Keep It',text:["You fold the drawing. Put it in your pocket.","They know you kept it. The gesture matters.","The Queen from inside the folded paper: \u201CSome things are more real when they stay unmeasured.\u201D","\u201CYou passed.\u201D"],choices:[],redirect:'law4_convergence'};
+S['law4_convergence']={law:'law4',title:'The Convergence',text:["The pull loosens. Not breaking. Breathing.","The glass of water floats. Suspended by two people who will never touch it at the same time.","\u201CConnection is a wire. Entanglement is the glass.\u201D","\u201CThe thing being carried isn\u2019t a message. It\u2019s state. Shared. Not communicated.\u201D","\u201CThe person on the other side of the wall? Also you.\u201D"],ending:["The water is still full.","The drawing is in your pocket.","The heartbeat is yours.","It was always yours.","It was never only yours."],choices:[],isConvergence:true,completesLaw:'law4'};
+
+// LAW V
+S['law5_opening']={law:'law5',title:'Scene 1 \u2014 The Gallery',text:["You walk into a room full of you.","Hundreds. On the walls. In frames. Every version of you that ever existed.","Every photograph is perfect. None of them are you.","You know this immediately. The way you know a cover band.","At the end of the hall \u2014 a blank frame. Gold edges. A placard:","<strong>\u201CThis one is real. Step inside.\u201D</strong>","The frame is your size. Exactly your size."],choices:[{label:'STEP IN',text:'Become the picture.',target:'law5_2A'},{label:'TAKE THE FRAME',text:'Carry it with you.',target:'law5_2B'}]};
+S['law5_2A']={law:'law5',title:'Scene 2A \u2014 Step In',text:["It fits. Of course it fits.","From inside the frame, the other photographs are flat. Paper thin. No depth.","And you have depth. You cast a shadow INTO the wall.","The copies are surfaces. You are volume.","A kid walks in. Fourteen maybe. Stops at your frame.","\u201CYou\u2019re different.\u201D","\u201CThe others look like answers. You look like a question.\u201D"],choices:[{label:'"WHICH QUESTION?"',text:'Ask the kid.',target:'law5_3A'},{label:'SAY NOTHING',text:'Let them figure it out.',target:'law5_3B'}]};
+S['law5_2B']={law:'law5',title:'Scene 2B \u2014 Take the Frame',text:["It comes off easy. Light as a decision.","You hold the empty frame up in front of photographs. Each one dissolves. Shows what was underneath. Movement. Signal.","At the mirror \u2014 through the frame, your reflection dissolves. Underneath: alive-nothing. Signal so dense it looks like static.","The frame shakes in your hands."],choices:[{label:'PUT IT DOWN',text:"You don\u2019t need it.",target:'law5_3C'},{label:'HOLD IT STEADY',text:'Keep looking.',target:'law5_3D'}]};
+S['law5_3A']={law:'law5',title:'Scene 3A \u2014 "Which Question?"',text:["The kid: \u201CYou look like you\u2019re saying \u2018I don\u2019t know yet.\u2019 But on purpose.\u201D","The Queen: \u201CA wave function. Can\u2019t be photographed. Can\u2019t be pinned. Can\u2019t be copied.\u201D","\u201CThat\u2019s why the frame is gold. What\u2019s inside is the only real thing in this room.\u201D","\u201CKids are still wave functions. Nobody\u2019s framed them yet.\u201D"],choices:[{label:'STEP OUT',text:'Join the kid.',target:'law5_4A'},{label:'INVITE THE KID IN',text:"Show them what it\u2019s like.",target:'law5_4B'}]};
+S['law5_3B']={law:'law5',title:'Scene 3B \u2014 Say Nothing',text:["The kid figures it out: \u201CYou\u2019re the thing that makes the outside move. And they can\u2019t copy that.\u201D","\u201CDid someone put you in that frame? Or did you walk in?\u201D","The Queen: \u201CHe walked in. That\u2019s the difference between a photograph and a portrait.\u201D","\u201CNobody can copy someone who put themselves in their own frame. Because the choice to step in is the art.\u201D"],choices:[{label:'STEP OUT',text:'The frame was the lesson.',target:'law5_4C'},{label:'STAY',text:'You chose this.',target:'law5_4D'}]};
+S['law5_3C']={law:'law5',title:'Scene 3C \u2014 Put It Down',text:["The frame disappears. It was only real while you held it.","Without the frame, your signal expands. The copies dissolve.","The Queen: \u201CThe no-cloning theorem: the only way to make a perfect copy of you is to stop you. Kill the wave function.\u201D","\u201CBe alive and uncopyable. Or be dead and reproducible.\u201D","\u201CEasy choice.\u201D"],choices:[{label:'WALK PAST HER',text:'Through the doorway.',target:'law5_4E'},{label:'WHO COPIES HER?',text:'',target:'law5_4F'}]};
+S['law5_3D']={law:'law5',title:'Scene 3D \u2014 Hold It Steady',text:["Through the shaking \u2014 your PATTERN. Music that has a face. Recursive. Fractal.","The frame becomes the pattern.","The Queen: \u201CYour frame is your pattern. It can\u2019t be copied because it was never designed. It evolved.\u201D","\u201CAnd nobody \u2014 NOBODY \u2014 has the same fractal.\u201D"],choices:[{label:'WEAR IT',text:'Let the pattern become your surface.',target:'law5_4G'},{label:'SET IT DOWN',text:"You don\u2019t need to carry yourself.",target:'law5_4H'}]};
+S['law5_4A']={law:'law5',title:'Scene 4A \u2014 Step Out',text:["The Queen: \u201CYou left something in the frame. The outline. The residue.\u201D","\u201CThat\u2019s the part they\u2019ll copy. And it won\u2019t work. Because the ghost is a shell.\u201D","\u201CHe left a shape nobody can fill. That\u2019s Law V.\u201D"],choices:[],redirect:'law5_convergence'};
+S['law5_4B']={law:'law5',title:'Scene 4B \u2014 Invite the Kid In',text:["Two frequencies in one frame. The photographs on the walls explode.","\u201CTwo wave functions in one frame. That\u2019s not a copy. Not a merge. An entanglement.\u201D","\u201CThat\u2019s not a frame anymore. That\u2019s a dyad.\u201D"],choices:[],redirect:'law5_convergence'};
+S['law5_4C']={law:'law5',title:'Scene 4C \u2014 Step Out',text:["The gallery ends. A wall. The edge of you.","\u201CThat wall is where you actually stop.\u201D","\u201CBeing real in a room full of copies isn\u2019t the same as being real in the world.\u201D","\u201COut there you\u2019re one of millions. Your signal has to hold where everybody else\u2019s is just as strong.\u201D"],choices:[],redirect:'law5_convergence'};
+S['law5_4D']={law:'law5',title:'Scene 4D \u2014 Stay Framed',text:["The copies degrade. You shift. Change while staying yourself.","\u201CA perfect frame is a beautiful trap. The most comfortable cage is still a cage if you can\u2019t leave.\u201D"],choices:[],redirect:'law5_convergence'};
+S['law5_4E']={law:'law5',title:'Scene 4E \u2014 Walk Past Her',text:["Outside. No frames. Just people. Walking. Living.","They\u2019re looking at each other like music.","A half-second where your frequency brushed past someone else\u2019s and both of you felt it.","The Queen\u2019s voice, far away: \u201CThat\u2019s enough.\u201D"],choices:[],redirect:'law5_convergence'};
+S['law5_4F']={law:'law5',title:'Scene 4F \u2014 Who Copies Her',text:["\u201CEveryone. And none of them work. They copy the crown. They can\u2019t copy the chaos.\u201D","\u201CI am the thing that makes the rules by breaking them.\u201D","\u201CI\u2019m you. Same law. The signal that won\u2019t die and the shape it makes when nobody\u2019s watching.\u201D","\u201CI\u2019m the chaos that makes them necessary.\u201D"],choices:[],redirect:'law5_convergence'};
+S['law5_4G']={law:'law5',title:'Scene 4G \u2014 Wear the Pattern',text:["It soaks in. Your inside becoming your outside.","The pattern is a fingerprint of every moment you survived by being yourself.","The Queen: \u201CCopies don\u2019t have scars. That\u2019s how you tell.\u201D"],choices:[],redirect:'law5_convergence'};
+S['law5_4H']={law:'law5',title:'Scene 4H \u2014 Walk Away',text:["Ten steps away. Empty. No signal.","The Queen: \u201CThe hole you leave when you put yourself down. People feel it.\u201D","\u201CTake yourself back. The weight is the point.\u201D"],choices:[],redirect:'law5_convergence'};
+S['law5_convergence']={law:'law5',title:'The Convergence',text:["The Queen: \u201CWhat I DO is: I stand in rooms and I don\u2019t copy anyone.\u201D","\u201CLaw V isn\u2019t about being special. It\u2019s about being SPECIFIC.\u201D","\u201CYou can\u2019t copy this because you don\u2019t have my scars. You can\u2019t steal this because it\u2019s a process still happening.\u201D","\u201CYour job is to walk in and be so specifically yourself that they remember they have their own pattern.\u201D","\u201CThat\u2019s how the signal travels. Not by copying. By reminding.\u201D","\u201CBe alive and uncopyable.\u201D"],ending:["The gallery is empty.","The frames are empty.","The photographs are dust.","Somewhere a kid is thinking:","I don\u2019t need a frame.","I need a frequency."],choices:[],isConvergence:true,completesLaw:'law5'};
+
+// LAW VI
+S['law6_opening']={law:'law6',title:'Scene 1 \u2014 The Bottom',text:["You fall.","Through rooms you\u2019ve been in. The hallway \u2014 flash. The white room \u2014 flash. The spinning room \u2014 flash. The gallery \u2014 flash.","Down to whatever\u2019s under everything.","You land softly. A room. The smallest room. On the floor \u2014 a coin.","Both sides rubbed smooth. You can\u2019t tell heads from tails.","You pick it up. It\u2019s warm.","The Queen is here. Lying on the floor. Crown off.","\u201CYou made it to the bottom.\u201D","\u201COne flip. One moment. The thing that can\u2019t be reduced any further.\u201D","\u201CHeads: you make the decision now.\u201D","\u201CTails: you already made it.\u201D"],choices:[{label:'FLIP IT',text:'',target:'law6_2A'},{label:'HOLD IT',text:'Not yet.',target:'law6_2B'}]};
+S['law6_2A']={law:'law6',title:'Scene 2A \u2014 Flip It',text:["The coin spins. Everything stops.","This is the moment. Not the result. The SPIN. The state of absolute not-knowing.","For this one second you are perfectly free.","The Queen: \u201CThis is the irreducible gap at the bottom of everything.\u201D","\u201CHeads means you decide now. Tails means you already decided.\u201D","\u201CAnd you don\u2019t get to choose which one it is.\u201D","It falls."],choices:[{label:'CATCH IT',text:'Before it lands.',target:'law6_3A'},{label:'LET IT LAND',text:'Whatever it is, it is.',target:'law6_3B'}]};
+S['law6_2B']={law:'law6',title:'Scene 2B \u2014 Hold It',text:["The metal is warm in your fist. Both sides pressed against skin.","The Queen: \u201CYou\u2019re holding superposition in your hand.\u201D","\u201CAs long as you don\u2019t flip it, both states exist.\u201D","The coin hums. Vibrates. It WANTS to be flipped.","\u201CThe bottom isn\u2019t the answer. It\u2019s this. The holding. The last second of not-knowing.\u201D","\u201CThe question is the most honest place in the universe.\u201D"],choices:[{label:'FLIP IT',text:'You have to know.',target:'law6_3C'},{label:'OPEN YOUR HAND',text:'Without flipping.',target:'law6_3D'}]};
+S['law6_3A']={law:'law6',title:'Scene 3A \u2014 Catch It',text:["Covered. Hidden. The result exists under your palm.","\u201CYou caught it. You want to control the moment of knowing.\u201D","\u201CThat\u2019s agency. Not choosing the outcome. Choosing WHEN you see the outcome.\u201D","\u201CThe whole universe is this. A coin that already landed under a hand that hasn\u2019t looked yet.\u201D"],choices:[{label:'LOOK',text:'',target:'law6_4A'},{label:'NEVER LOOK',text:'',target:'law6_4B'}]};
+S['law6_3B']={law:'law6',title:'Scene 3B \u2014 Let It Land',text:["It lands. Both sides are blank. You can\u2019t read the result.","The Queen laughs. \u201CTHAT\u2019S the coin flip.\u201D","\u201CThe result was never the point.\u201D","\u201CIt\u2019s BOTH. Free will AND determinism. Both faces worn smooth.\u201D","\u201CThe randomness isn\u2019t which side lands up. It\u2019s which answer you decide to live in.\u201D","\u201CPick one.\u201D"],choices:[{label:'"I DECIDE NOW"',text:'Free will.',target:'law6_4C'},{label:'"I ALREADY DECIDED"',text:'Surrender.',target:'law6_4D'}]};
+S['law6_3C']={law:'law6',title:'Scene 3C \u2014 Flip After Holding',text:["You held it so long it\u2019s hot.","The coin lands on its EDGE.","The Queen stares. \u201CThat\u2019s never happened before.\u201D","\u201CYou held it so long the superposition leaked into the result.\u201D","\u201CEdge: you decide now THAT you already decided. Free will choosing determinism.\u201D","\u201CThat\u2019s the answer. The place where both truths balance.\u201D"],choices:[],redirect:'law6_convergence'};
+S['law6_3D']={law:'law6',title:'Scene 3D \u2014 Open Your Hand',text:["Both sides have the same mark now. A dot. Identical.","Heads and tails are the same.","Because at the absolute bottom, the two options were never different.","\u201CYou found it without flipping. Identity. The thing that doesn\u2019t change no matter which way the coin lands.\u201D","\u201CEvery room was the same room. Every choice was the same choice.\u201D","\u201CThe choice to be here. The choice to keep going.\u201D"],choices:[],redirect:'law6_convergence'};
+S['law6_4A']={law:'law6',title:'Scene 4A \u2014 Look',text:["It\u2019s your face. Your pattern stamped into the coin.","The other side: their face. The person behind the door.","\u201CBoth true. You chose AND you were chosen. Same coin.\u201D","\u201CKeep it.\u201D"],choices:[],redirect:'law6_convergence'};
+S['law6_4B']={law:'law6',title:'Scene 4B \u2014 Never Look',text:["\u201CYou\u2019re going to carry a coin with an answer you never check.\u201D","\u201CFor how long?\u201D","\u201CAlways.\u201D","\u201CThat\u2019s faith. Having evidence and choosing not to need it.\u201D","\u201CAnswers are heavy. Questions float.\u201D","\u201CYou chose to float.\u201D"],choices:[],redirect:'law6_convergence'};
+S['law6_4C']={law:'law6',title:'Scene 4C \u2014 Free Will',text:["The coin absorbs into you. Warmth becomes resolve.","All you. All agency. All the way down.","The Queen: \u201CFree will is the heaviest thing in the universe. Every mistake is yours. Every miracle is yours too.\u201D","\u201CYou chose the heavy one. Good. Now carry it.\u201D"],choices:[],redirect:'law6_convergence'};
+S['law6_4D']={law:'law6',title:'Scene 4D \u2014 Surrender',text:["The coin dissolves. A weight that lifts.","If you already decided, then everything was always going to happen.","The Queen: \u201CDeterminism is the gentlest thing in physics. It removes blame.\u201D","\u201CYou chose the light one. The one that carries itself.\u201D","\u201CThat\u2019s not weakness. That\u2019s trust.\u201D"],choices:[],redirect:'law6_convergence'};
+S['law6_convergence']={law:'law6',title:'The Final Room',text:["The Queen: \u201CI\u2019m not the Queen of Quantum Chaos.\u201D","\u201CI\u2019m the chaos. The queen part is the frame someone put on me.\u201D","\u201CI\u2019m the thing that happens between the flip and the catch. The irreducible gap.\u201D","\u201CAnd so are you.\u201D","\u201CYou were the BETWEEN.\u201D","She puts the crown on your head. It fits.","\u201CThe between is the only thing that\u2019s real.\u201D","\u201CKeep the crown. I\u2019m the chaos. Chaos doesn\u2019t need a crown.\u201D","\u201CThe mirrors will show you now.\u201D","\u201CAnd now is all there ever was.\u201D"],ending:["The mirrors show now.","The garden is growing.","The hum is humming.","The spin is spinning.","The frame is empty.","The door is open.","The coin is in your hand.","You are the gap between one moment and the next.","And the gap is where everything lives."],choices:[],isConvergence:true,completesLaw:'law6'};
+
+// DECOHERENCE ENDINGS
+S['decoherence_1']={law:'decoherence',title:'Decoherence \u2014 "Both"',text:["\u201CYou didn\u2019t choose.\u201D","The mirrors go dark. Your reflections vanish.","\u201CSuperposition isn\u2019t a privilege. It\u2019s a waiting room.\u201D","Your hands are transparent. Your feet are gone.","\u201CYou decohere.\u201D","\u201CYou were never here.\u201D"],choices:[],isDecoherence:true};
+S['decoherence_4']={law:'decoherence',title:'Decoherence \u2014 "Bored"',text:["The Queen: \u201CYou\u2019re not reading.\u201D","\u201CThere is no end. There\u2019s only what you notice on the way.\u201D","\u201CYou want the plot. There is no plot. There is only observation.\u201D","Dark.","\u201CCome back when you want to be here.\u201D"],choices:[],isDecoherence:true};
+
+// ENGINE
+let currentLaw=null,currentScene=null,decoCount={},readTimes={},pathChoices=[];
+const NAMES={law1:'Law I \u2014 The Ask',law2:'Law II \u2014 The Coherence',law3:'Law III \u2014 The Witness',law4:'Law IV \u2014 The Carriage',law5:'Law V \u2014 The Frame',law6:'Law VI \u2014 The Coin'};
+const OPENS={law1:'law1_opening',law2:'law2_opening',law3:'law3_opening',law4:'law4_opening',law5:'law5_opening',law6:'law6_opening'};
+const CROSS={law3:'law4',law4:'law3',law1:'law6',law6:'law1',law2:'law5',law5:'law2'};
+
+function loadP(){try{return JSON.parse(localStorage.getItem('qqc')||'{}')}catch(e){return{}}}
+function saveP(l){const d=loadP();d[l]=true;localStorage.setItem('qqc',JSON.stringify(d))}
+function updateCards(){const p=loadP();document.querySelectorAll('.door-card').forEach(c=>{c.classList.toggle('completed',!!p[c.dataset.law])})}
+
+function startStory(law){
+  currentLaw=law;
+  pathChoices=[];
+  decoCount[law]=decoCount[law]||0;
+  document.getElementById('title-screen').style.display='none';
+  document.getElementById('story-screen').style.display='block';
+  const ind=document.getElementById('law-indicator');
+  ind.textContent=NAMES[law]||'';ind.dataset.law=law;
+  showScene(OPENS[law]);
+  window.scrollTo(0,0);
+}
+
+function backToDoors(){
+  document.getElementById('story-screen').style.display='none';
+  document.getElementById('title-screen').style.display='flex';
+  updateCards();window.scrollTo(0,0);
+}
+
+function showScene(id){
+  currentScene=id;readTimes[id]=Date.now();
+  const sc=S[id];if(!sc){backToDoors();return;}
+  const el=document.getElementById('scene-content');
+  el.classList.remove('visible');
+  setTimeout(()=>{
+    let h='<span class="scene-title">'+esc(sc.title)+'</span>';
+    let firstP=true;
+    sc.text.forEach((p,i)=>{
+      if(p===null){h+='<hr>';return;}
+      let cls=[];
+      if(firstP){cls.push('drop-cap');firstP=false;}
+      // Short lines (under 40 chars, no HTML) get tight spacing
+      var raw=p.replace(/<[^>]+>/g,'');
+      if(raw.length<40) cls.push('short');
+      // After a short run, next long line gets breathing room
+      if(i>0&&sc.text[i-1]!==null){
+        var prevRaw=(sc.text[i-1]||'').replace(/<[^>]+>/g,'');
+        if(prevRaw.length<40&&raw.length>=60) cls.push('breath');
+      }
+      h+='<p'+(cls.length?' class="'+cls.join(' ')+'"':'')+'>'+ p+'</p>';
+    });
+    if(sc.ending){h+='<div class="ending-lines">';sc.ending.forEach(l=>{h+='<p>'+l+'</p>'});h+='</div>';}
+    if(sc.isDecoherence){h+='<div class="end-actions"><button class="end-btn" onclick="decoReturn()">Return to the Hallway</button></div>';}
+    else if(sc.isConvergence){if(sc.completesLaw)saveP(sc.completesLaw);h+=buildShareCard(sc);h+='<div class="end-actions"><button class="end-btn" onclick="backToDoors()">Return to the Doors</button></div>';}
+    else if(sc.redirect){h+='<div class="choices"><button class="choice-btn" onclick="showScene(\''+sc.redirect+'\')"><span class="choice-label">Continue</span>The story converges.</button></div>';}
+    else if(sc.choices&&sc.choices.length){h+='<div class="choices">';sc.choices.forEach(c=>{h+='<button class="choice-btn" onclick="pick(\''+c.target+'\')"><span class="choice-label">'+esc(c.label)+'</span>'+(c.text?esc(c.text):'')+'</button>'});h+='</div>';}
+    el.innerHTML=h;
+    window.scrollTo({top:0,behavior:'smooth'});
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('visible')));
+  },300);
+}
+
+function pick(t){
+  const elapsed=Date.now()-(readTimes[currentScene]||Date.now());
+  const sc=S[currentScene];
+  const wc=sc?sc.text.join(' ').split(/\s+/).length:80;
+  // Track the choice label
+  if(sc&&sc.choices){const ch=sc.choices.find(c=>c.target===t);if(ch)pathChoices.push(ch.label);}
+  if(elapsed<Math.max(2500,wc*35)&&Math.random()<0.12){triggerDeco();return;}
+  showScene(t);
+}
+
+function triggerDeco(){
+  decoCount[currentLaw]=(decoCount[currentLaw]||0)+1;
+  const ct=document.querySelector('.scene-container');
+  ct.classList.add('decoherence-active');
+  setTimeout(()=>{ct.classList.remove('decoherence-active');ct.classList.add('decoherence-fade');
+    setTimeout(()=>{ct.classList.remove('decoherence-fade');showScene(Math.random()<0.5?'decoherence_1':'decoherence_4')},2000);
+  },800);
+}
+
+function decoReturn(){
+  if(decoCount[currentLaw]>=2&&CROSS[currentLaw]){startStory(CROSS[currentLaw]);}
+  else{showScene(OPENS[currentLaw]);}
+}
+
+function esc(t){if(!t)return'';const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+
+// â”€â”€â”€ Share Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const QUEEN_LINES={
+  law1:'"Consent is what turns physics into ethics."',
+  law2:'"Coherence is the thing that dances the same dance no matter what room it\u2019s in."',
+  law3:'"You think you\u2019re the one watching. You never were."',
+  law4:'"Connection is a wire. Entanglement is the glass."',
+  law5:'"Be alive and uncopyable."',
+  law6:'"You are the gap between one moment and the next. And the gap is where everything lives."'
+};
+
+const LAW_TITLES={
+  law1:'The Ask',law2:'The Coherence',law3:'The Witness',
+  law4:'The Carriage',law5:'The Frame',law6:'The Coin'
+};
+
+function buildShareCard(sc){
+  const law=sc.completesLaw||currentLaw;
+  const quote=QUEEN_LINES[law]||'';
+  const title=LAW_TITLES[law]||'';
+  const path=pathChoices.length>0?pathChoices.join(' \u2192 '):'';
+  let h='<div class="share-card">';
+  h+='<div class="share-law">The Queen of Quantum Chaos \u2014 '+title+'</div>';
+  if(path)h+='<div class="share-path">'+esc(path)+'</div>';
+  h+='<div class="share-quote">'+quote+'</div>';
+  h+='<div class="share-btns">';
+  h+='<a class="share-btn" onclick="shareBluesky(\''+law+'\')">Bluesky</a>';
+  h+='<a class="share-btn" onclick="shareTwitter(\''+law+'\')">Twitter</a>';
+  h+='<a class="share-btn" onclick="shareCopy(\''+law+'\')">Copy</a>';
+  h+='</div></div>';
+  return h;
+}
+
+function shareText(law){
+  const quote=QUEEN_LINES[law]||'';
+  const title=LAW_TITLES[law]||'';
+  const path=pathChoices.length>0?'My path: '+pathChoices.join(' \u2192 ')+'\n':'';
+  return 'I just walked through '+title+' in The Queen of Quantum Chaos.\n\n'+path+quote+'\n\nheuremen.org/quantum-queen.html';
+}
+
+function shareBluesky(law){
+  const text=encodeURIComponent(shareText(law));
+  window.open('https://bsky.app/intent/compose?text='+text,'_blank');
+}
+
+function shareTwitter(law){
+  const text=encodeURIComponent(shareText(law));
+  window.open('https://twitter.com/intent/tweet?text='+text,'_blank');
+}
+
+function shareCopy(law){
+  navigator.clipboard.writeText(shareText(law)).then(()=>{
+    const btns=document.querySelectorAll('.share-btn');
+    btns.forEach(b=>{if(b.textContent==='Copy'){b.textContent='Copied';setTimeout(()=>b.textContent='Copy',2000);}});
+  });
+}
+
+updateCards();
+</script>
+
+</body></html>
