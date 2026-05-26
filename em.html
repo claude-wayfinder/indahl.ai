@@ -153,17 +153,6 @@ body {
 .ring-dot.bottom { bottom: -14px; left: 50%; transform: translateX(-50%); }
 .ring-dot.left   { left: -14px; top: 50%; transform: translateY(-50%); }
 
-/* ── Labels ── */
-#mirror-label {
-  font-size: 12px;
-  color: rgba(201,168,76,0.55);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-family: -apple-system, sans-serif;
-  font-weight: 300;
-  min-height: 1.2rem;
-  text-align: center;
-}
 
 /* ── Transcript ── */
 #transcript {
@@ -304,7 +293,6 @@ body {
   </button>
 </div>
 
-<div id="mirror-label">touch the mirror</div>
 
 <div id="text-mode">
   <input id="text-input" type="text" placeholder="write something..." autocomplete="off" />
@@ -327,7 +315,6 @@ let history = [];
 let speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
 const mirror      = document.getElementById('mirror');
-const mirrorLabel = document.getElementById('mirror-label');
 const transcriptEl= document.getElementById('transcript');
 const textMode    = document.getElementById('text-mode');
 const textInput   = document.getElementById('text-input');
@@ -338,7 +325,6 @@ const paywallEmail= document.getElementById('paywall-email');
 
 if (!speechSupported) {
   textMode.style.display = 'flex';
-  mirrorLabel.textContent = 'write below to begin';
 }
 
 // ── Trial / Subscription ──
@@ -363,8 +349,6 @@ function canProceed() {
 // ── State ──
 function setState(s) {
   mirror.className = s;
-  const labels = { idle: 'touch the mirror', listening: 'listening', thinking: '...', speaking: 'speaking' };
-  mirrorLabel.textContent = labels[s] || '';
 }
 
 // ── Speech Recognition ──
