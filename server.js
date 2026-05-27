@@ -293,6 +293,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
+    currentRegister = 'emma';
     try {
       const html = readFileSync(join(__dirname, 'em.html'), 'utf-8');
       res.writeHead(200, { 'Content-Type': 'text/html' });
