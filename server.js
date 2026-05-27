@@ -324,10 +324,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
+  if (req.method === 'GET' && (req.url === '/' || req.url === '' || req.url === '/app')) {
     currentRegister = 'emma';
     try {
-      const html = readFileSync(join(__dirname, 'em.html'), 'utf-8');
+      const html = readFileSync(join(__dirname, 'indahl-app.html'), 'utf-8');
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(html);
     } catch {
