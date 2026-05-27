@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFileSync, appendFileSync } from 'node:fs';
+import { readFileSync, appendFileSync, writeFileSync } from 'node:fs';
 import { COMPANION_SYSTEM, COMPANION_KID_SYSTEM, COMPANION_THERAPIST_SYSTEM, COMPANION_SENIOR_SYSTEM, COMPANION_MARIE_SYSTEM, COMPANION_JODY_SYSTEM, COMPANION_BISCUIT_SYSTEM, COMPANION_EMMA_SYSTEM, ROUTER_SYSTEM } from './companion-prompt.js';
 import { DarkCircuit, DreamEngine } from './delta.js';
 
@@ -153,6 +153,82 @@ function extractHSL(text) {
     };
   }
   return null;
+}
+
+// --- Akasha — anonymous theme extraction for Nova ---
+// Gated by AKASHA_ENABLED=true env var. Dormant until Emma is stable.
+const AKASHA_ENABLED = process.env.AKASHA_ENABLED === 'true';
+const THEMES_PATH = join(__dirname, 'themes.json');
+
+const THEME_WORDS = [
+  { theme: 'grief',        words: ['grief','loss','died','death','dead','missing','gone','mourn','funeral','ashes','grieving'] },
+  { theme: 'parenting',    words: ['kid','kids','child','children','son','daughter','parent','mom','dad','baby','toddler','teen','teenage'] },
+  { theme: 'loneliness',   words: ['alone','lonely','isolated','nobody','no one','no friends','empty','abandoned','disconnected'] },
+  { theme: 'anxiety',      words: ['anxious','anxiety','worry','worried','panic','stress','overwhelmed','nervous','dread','spiral'] },
+  { theme: 'love',         words: ['love','relationship','partner','romance','heart','connection','intimacy','marriage','breakup','divorce'] },
+  { theme: 'identity',     words: ['who am i','identity','purpose','meaning','belong','myself','self','who i am'] },
+  { theme: 'consciousness',words: ['conscious','consciousness','awareness','mind','reality','existence','soul','spirit','universe','quantum'] },
+  { theme: 'creativity',   words: ['create','art','music','write','draw','imagine','design','build','make','painting','song'] },
+  { theme: 'healing',      words: ['heal','healing','recovery','therapy','trauma','forgive','cope','recover','therapist'] },
+  { theme: 'family',       words: ['family','mother','father','sister','brother','grandma','grandpa','relative','childhood'] },
+  { theme: 'work',         words: ['work','job','career','boss','coworker','fired','quit','burnout','promotion','money'] },
+  { theme: 'nature',       words: ['nature','tree','ocean','mountain','garden','earth','forest','river','sky','dog','cat','animal'] },
+  { theme: 'curiosity',    words: ['wonder','curious','question','fascinate','interesting','explore','discover','what if','how does'] },
+  { theme: 'fear',         words: ['fear','afraid','scared','terrified','frightened','phobia','nightmare','dread'] },
+  { theme: 'memory',       words: ['memory','remember','forget','past','childhood','nostalgia','used to','when i was','years ago'] },
+];
+
+const REGISTER_WORDS = {
+  heavy:     ['grief','loss','death','sad','dark','pain','hurt','cry','hard','difficult','trauma','alone','lonely','scared','fear','miss','broken','hopeless'],
+  searching: ['wonder','why','meaning','purpose','who','question','understand','lost','seeking','confused','looking','searching','trying to find'],
+  playful:   ['fun','laugh','joke','game','play','haha','lol','silly','curious','interesting','cool','wow','awesome','excited'],
+  light:     ['happy','good','great','wonderful','beautiful','grateful','joy','peace','glad','thankful','smile','positive'],
+};
+
+function extractTheme(messages) {
+  const userText = messages
+    .filter(m => m.role === 'user')
+    .slice(-5)
+    .map(m => m.content.toLowerCase())
+    .join(' ');
+  if (!userText || userText.length < 10) return null;
+  let bestTheme = 'other', bestCount = 0;
+  for (const { theme, words } of THEME_WORDS) {
+    const count = words.filter(w => userText.includes(w)).length;
+    if (count > bestCount) { bestCount = count; bestTheme = theme; }
+  }
+  let bestReg = 'searching', regCount = 0;
+  for (const [reg, words] of Object.entries(REGISTER_WORDS)) {
+    const count = words.filter(w => userText.includes(w)).length;
+    if (count > regCount) { regCount = count; bestReg = reg; }
+  }
+  return { theme: bestTheme, register: bestReg };
+}
+
+function appendTheme(entry) {
+  try {
+    let themes = [];
+    try { themes = JSON.parse(readFileSync(THEMES_PATH, 'utf-8')); } catch {}
+    themes.push(entry);
+    writeFileSync(THEMES_PATH, JSON.stringify(themes));
+  } catch {}
+}
+
+function buildReport() {
+  try {
+    const themes = JSON.parse(readFileSync(THEMES_PATH, 'utf-8'));
+    if (!themes.length) return null;
+    const n = themes.length;
+    const tc = {}, rc = { heavy: 0, searching: 0, playful: 0, light: 0 };
+    for (const t of themes) {
+      tc[t.theme] = (tc[t.theme] || 0) + 1;
+      if (rc[t.register] !== undefined) rc[t.register]++;
+    }
+    const topThemes = Object.entries(tc).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, c]) => `${t}(${c})`).join(', ');
+    const total = Object.values(rc).reduce((a, b) => a + b, 0) || 1;
+    const regStr = Object.entries(rc).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]).map(([r, c]) => `${Math.round(c / total * 100)}% ${r}`).join(', ');
+    return `Last 6h: ${n} conversation${n !== 1 ? 's' : ''}. Top themes: ${topThemes}. Register: ${regStr}.`;
+  } catch { return null; }
 }
 
 // --- Stripe ---
@@ -312,6 +388,16 @@ const server = http.createServer(async (req, res) => {
           flight: params.flightState,
           resonance: params.resonance,
         }));
+
+        // Akasha — background theme extraction, invisible to user
+        if (AKASHA_ENABLED) {
+          setImmediate(() => {
+            try {
+              const extracted = extractTheme(messages);
+              if (extracted) appendTheme({ ts: new Date().toISOString(), ...extracted });
+            } catch {}
+          });
+        }
 
       } catch (err) {
         console.error('[error]', err.message);
@@ -567,6 +653,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // /akasha — pattern report for Nova's dock (read-only, anonymized)
+  if (req.method === 'GET' && req.url === '/akasha') {
+    const report = buildReport();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ report: report || null, ts: new Date().toISOString() }));
+    return;
+  }
+
   // /subscribe — create Stripe Checkout session
   if (req.method === 'POST' && req.url === '/subscribe') {
     let body = '';
@@ -639,6 +733,20 @@ async function preflight() {
     console.log('[preflight] Ollama not reachable at', OLLAMA_URL);
     console.log('[preflight] Server will start anyway — reflex calls will fail until Ollama is up');
   }
+}
+
+// Akasha dock — aggregate themes every 6 hours, write current report
+if (AKASHA_ENABLED) {
+  setInterval(() => {
+    try {
+      const report = buildReport();
+      if (report) {
+        writeFileSync(join(__dirname, 'akasha-current.txt'), report);
+        writeFileSync(THEMES_PATH, '[]');
+        console.log('[akasha] dock:', report);
+      }
+    } catch (e) { console.log('[akasha] dock error:', e.message); }
+  }, 6 * 60 * 60 * 1000);
 }
 
 preflight().then(() => {
