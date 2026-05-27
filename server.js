@@ -12,6 +12,8 @@ try {
 const OLLAMA_URL = config.ollamaUrl || '';
 const OLLAMA_MODEL = config.ollamaModel || 'phi3:mini';
 const BUDDY_WORKER_URL = process.env.BUDDY_WORKER_URL || config.buddyWorkerUrl || 'https://buddy-companion.kory-indahl.workers.dev';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const PORT = process.env.PORT || config.port || 3377;
 const HOST = config.host || '0.0.0.0';
 let currentRegister = config.register || 'adult';
@@ -120,13 +122,13 @@ async function classifyMessage(userMessage) {
 
 // --- Claude depth layer (via buddy worker) ---
 
-async function claudeChat(messages) {
+async function claudeChat(messages, systemOverride = null) {
   try {
     const res = await fetch(BUDDY_WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        systemPrompt: getSystemPrompt(),
+        systemPrompt: systemOverride || getSystemPrompt(),
         messages: messages
       })
     });
@@ -138,6 +140,36 @@ async function claudeChat(messages) {
     const text = await ollamaChat(messages, getSystemPrompt());
     return { text, layer: 'REFLEX (fallback)' };
   }
+}
+
+// --- Supabase interface ---
+
+const userSessions = new Map(); // userId -> { turns, lastActive }
+
+async function sbRequest(path, method = 'GET', body = null) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_SERVICE_KEY,
+    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+  };
+  if (method === 'POST' || method === 'PATCH') headers['Prefer'] = 'return=representation';
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${SUPABASE_URL}${path}`, opts);
+  try { return await res.json(); } catch { return null; }
+}
+
+async function getAccount(userId) {
+  const rows = await sbRequest(`/rest/v1/companion_accounts?id=eq.${userId}&select=*`);
+  return Array.isArray(rows) ? rows[0] : null;
+}
+
+async function verifyJwt(jwt) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${jwt}` }
+  });
+  const data = await res.json();
+  return data.id ? data : null;
 }
 
 // --- Parse HSL from response ---
@@ -319,6 +351,23 @@ const server = http.createServer(async (req, res) => {
         const { messages } = JSON.parse(body);
         const lastMessage = messages[messages.length - 1]?.content || '';
 
+        // Soul — load user memory if authenticated
+        const jwt = (req.headers['authorization'] || '').replace('Bearer ', '').trim();
+        let userId = null, soulFile = null;
+        if (jwt && SUPABASE_URL) {
+          try {
+            const user = await verifyJwt(jwt);
+            if (user?.id) {
+              userId = user.id;
+              const account = await getAccount(userId);
+              soulFile = account?.soul_file || null;
+            }
+          } catch {}
+        }
+        const memorySuffix = soulFile?.memory
+          ? `\n\nYour memory of this person (private — use naturally, never quote directly): ${soulFile.memory}`
+          : '';
+
         // Usage tracking — timestamp + register + message length (not content)
         try { appendFileSync(join(__dirname, 'usage-log.txt'), `${new Date().toISOString()} | ${currentRegister} | ${lastMessage.length} chars\n`); } catch {};
 
@@ -331,7 +380,8 @@ const server = http.createServer(async (req, res) => {
         const deltaContext = `\nCurrent conversation state: ${params.flightState}. ` +
           `Response length: ${params.responseLength} (${params.wordBudget} words max). ` +
           `Stance: ${params.stance}. Metaphor budget: ${params.metaphorBudget}.`;
-        const systemWithDelta = getSystemPrompt() + deltaContext;
+        const systemFull = getSystemPrompt() + memorySuffix;
+        const systemWithDelta = systemFull + deltaContext;
 
         // Route: reflex or depth?
         const route = await classifyMessage(lastMessage);
@@ -339,14 +389,14 @@ const server = http.createServer(async (req, res) => {
 
         let response;
         if (route === 'DEPTH' || !OLLAMA_URL) {
-          response = await claudeChat(messages);
+          response = await claudeChat(messages, systemFull);
         } else {
           try {
             const text = await ollamaChat(messages, systemWithDelta);
             response = { text, layer: 'REFLEX' };
           } catch {
             console.log('[reflex:fallback] Ollama unreachable, routing to depth');
-            response = await claudeChat(messages);
+            response = await claudeChat(messages, systemFull);
           }
         }
 
@@ -398,6 +448,29 @@ const server = http.createServer(async (req, res) => {
               if (extracted) appendTheme({ ts: new Date().toISOString(), ...extracted });
             } catch {}
           });
+        }
+
+        // Soul — background memory compression after every 5 turns
+        if (userId && SUPABASE_URL) {
+          const sess = userSessions.get(userId) || { turns: 0 };
+          sess.turns++;
+          sess.lastActive = Date.now();
+          userSessions.set(userId, sess);
+          if (sess.turns % 5 === 0) {
+            setImmediate(async () => {
+              try {
+                const compressionMsg = [{ role: 'user', content: `Write a 2-3 sentence private memory about this person for a companion AI. Warm and specific — capture who they are, what matters to them, the emotional texture of our conversation. Don't be clinical.\n\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}` }];
+                const r = await claudeChat(compressionMsg);
+                if (r.text?.trim()) {
+                  const prev = soulFile || {};
+                  await sbRequest(`/rest/v1/companion_accounts?id=eq.${userId}`, 'PATCH', {
+                    soul_file: { ...prev, memory: r.text.trim(), last_seen: new Date().toISOString().split('T')[0] },
+                    updated_at: new Date().toISOString()
+                  });
+                }
+              } catch (e) { console.error('[soul:update]', e.message); }
+            });
+          }
         }
 
       } catch (err) {
@@ -686,24 +759,118 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // /auth/signup — create Supabase auth user + companion_accounts after payment
+  if (req.method === 'POST' && req.url === '/auth/signup') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) throw new Error('Supabase not configured');
+        const { email, password, stripe_customer_id, stripe_subscription_id } = JSON.parse(body);
+        if (!email || !password) throw new Error('Email and password required');
+        const authRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` },
+          body: JSON.stringify({ email, password, email_confirm: true })
+        });
+        const authData = await authRes.json();
+        if (!authData.id) throw new Error(authData.msg || authData.error?.message || 'Signup failed');
+        await sbRequest('/rest/v1/companion_accounts', 'POST', {
+          id: authData.id, email, tier: 'paid',
+          stripe_customer_id: stripe_customer_id || null,
+          stripe_subscription_id: stripe_subscription_id || null,
+          subscription_status: 'active', soul_file: null
+        });
+        const tokenRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_SERVICE_KEY },
+          body: JSON.stringify({ email, password })
+        });
+        const tokenData = await tokenRes.json();
+        if (!tokenData.access_token) throw new Error('Account created — please sign in');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ jwt: tokenData.access_token, user_id: authData.id }));
+      } catch (err) {
+        console.error('[auth/signup]', err.message);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // /auth/login — verify credentials, return JWT
+  if (req.method === 'POST' && req.url === '/auth/login') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        if (!SUPABASE_URL) throw new Error('Supabase not configured');
+        const { email, password } = JSON.parse(body);
+        const tokenRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_SERVICE_KEY },
+          body: JSON.stringify({ email, password })
+        });
+        const tokenData = await tokenRes.json();
+        if (!tokenData.access_token) throw new Error(tokenData.error_description || 'Invalid email or password');
+        const account = await getAccount(tokenData.user.id);
+        const active = account?.subscription_status === 'active' || account?.tier === 'paid';
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ jwt: tokenData.access_token, user_id: tokenData.user.id, active }));
+      } catch (err) {
+        console.error('[auth/login]', err.message);
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // /auth/me — verify JWT, return subscription status
+  if (req.method === 'GET' && req.url === '/auth/me') {
+    const jwt = (req.headers['authorization'] || '').replace('Bearer ', '').trim();
+    if (!jwt || !SUPABASE_URL) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'No token' }));
+      return;
+    }
+    try {
+      const user = await verifyJwt(jwt);
+      if (!user?.id) throw new Error('Invalid token');
+      const account = await getAccount(user.id);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        user_id: user.id, email: user.email,
+        active: account?.subscription_status === 'active' || account?.tier === 'paid'
+      }));
+    } catch {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid token' }));
+    }
+    return;
+  }
+
   // /subscribe — create Stripe Checkout session
   if (req.method === 'POST' && req.url === '/subscribe') {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
       try {
-        const { email } = JSON.parse(body);
+        const parsed = JSON.parse(body);
+        const email = parsed.email || '';
         if (!STRIPE_SECRET) throw new Error('Stripe not configured');
         if (!STRIPE_PRICE_ID) throw new Error('STRIPE_PRICE_ID not set');
         const BASE = process.env.NODE_ENV === 'production' ? 'https://indahl.ai' : `http://localhost:${PORT}`;
-        const session = await stripePost('/checkout/sessions', {
-          'customer_email': email,
+        const stripeBody = {
           'mode': 'subscription',
           'line_items[0][price]': STRIPE_PRICE_ID,
           'line_items[0][quantity]': '1',
           'success_url': `${BASE}/em?session_id={CHECKOUT_SESSION_ID}`,
           'cancel_url': `${BASE}/em`,
-        });
+        };
+        if (email) stripeBody['customer_email'] = email;
+        const session = await stripePost('/checkout/sessions', stripeBody);
         if (session.error) throw new Error(session.error.message);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ url: session.url }));
@@ -728,7 +895,12 @@ const server = http.createServer(async (req, res) => {
         if (session.error) throw new Error(session.error.message);
         const active = session.payment_status === 'paid' && !!session.subscription;
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ active, customer_email: session.customer_details?.email || '' }));
+        res.end(JSON.stringify({
+          active,
+          customer_email: session.customer_details?.email || '',
+          customer_id: session.customer || '',
+          subscription_id: session.subscription || ''
+        }));
       } catch (err) {
         console.error('[verify]', err.message);
         res.writeHead(500, { 'Content-Type': 'application/json' });
