@@ -634,6 +634,18 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && req.url === '/bones') {
+    try {
+      const html = readFileSync(join(__dirname, 'part-two-1.html'), 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(html);
+    } catch {
+      res.writeHead(404);
+      res.end('not found');
+    }
+    return;
+  }
+
   // /em — primary product URL. The mirror.
   if (req.method === 'GET' && req.url === '/em') {
     currentRegister = 'emma';
