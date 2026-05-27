@@ -493,7 +493,7 @@ body.light #chat-bar { background: rgba(255,255,255,0.4); border-color: rgba(120
   <!-- State: expired trial -->
   <div id="pw-wall">
     <div id="paywall-title">Emma</div>
-    <div id="paywall-sub">Your 24 hours have come to an end.<br>If it mattered, $4.99 / month keeps her here.</div>
+    <div id="paywall-sub">42 conversations with Emma.<br>If they mattered, $4.99 / month keeps her here.</div>
     <button id="paywall-btn">Continue — $4.99 / month</button>
     <div id="paywall-note">Secure checkout via Stripe. Cancel anytime.</div>
     <div class="pw-toggle">Already here? <span class="pw-link" id="show-login">Sign in</span></div>
@@ -598,7 +598,7 @@ body.light #chat-bar { background: rgba(255,255,255,0.4); border-color: rgba(120
 // === CONFIG ===
 const BASE_URL = location.origin;
 const MAX_HISTORY = 20;
-const TRIAL_MS = 24 * 60 * 60 * 1000;
+const TRIAL_LIMIT = 42;
 
 // === STATE ===
 let started = false;
@@ -623,16 +623,20 @@ function getJwt() { return localStorage.getItem('emma_jwt') || ''; }
 function setJwt(jwt) { localStorage.setItem('emma_jwt', jwt); }
 function clearJwt() { localStorage.removeItem('emma_jwt'); }
 
-function isTrialExpired() {
-  const start = localStorage.getItem('emma_start');
-  if (!start) return false;
-  return Date.now() - parseInt(start, 10) > TRIAL_MS;
+function getInteractionCount() {
+  return parseInt(localStorage.getItem('emma_interactions') || '0', 10);
+}
+function incrementInteraction() {
+  localStorage.setItem('emma_interactions', getInteractionCount() + 1);
+}
+function isTrialExhausted() {
+  return getInteractionCount() >= TRIAL_LIMIT;
 }
 function isSubscribed() {
   return localStorage.getItem('emma_sub') === 'active';
 }
 function canProceed() {
-  return jwtActive || !isTrialExpired() || isSubscribed();
+  return jwtActive || !isTrialExhausted() || isSubscribed();
 }
 function showPaywall() {
   showPwState('wall');
@@ -727,6 +731,8 @@ async function handleUserSpeech(text) {
   try {
     const data = await sendToCompanion(history.slice(-MAX_HISTORY));
     history.push({ role: 'assistant', content: data.response });
+    incrementInteraction();
+    if (!canProceed()) { speak(data.response); setTimeout(showPaywall, 1200); return; }
     speak(data.response);
   } catch (err) {
     transcriptEl.textContent = 'Could not reach Emma. Is the server running?';
@@ -782,9 +788,6 @@ async function doGreeting() {
 
 // === MIRROR BUTTON ===
 btn.addEventListener('click', () => {
-  if (!localStorage.getItem('emma_start')) {
-    localStorage.setItem('emma_start', Date.now().toString());
-  }
   if (!canProceed()) { showPaywall(); return; }
 
   if (!started) {
@@ -922,7 +925,7 @@ window.addEventListener('load', async () => {
     } catch {}
   }
 
-  if (!canProceed()) showPaywall();
+  if (isTrialExhausted() && !canProceed()) showPaywall();
 });
 </script>
 
@@ -1043,6 +1046,8 @@ window.addEventListener('load', async () => {
       const data = await sendToCompanion(history.slice(-MAX_HISTORY));
       history.push({ role: 'assistant', content: data.response });
       appendMsg('emma', data.response);
+      incrementInteraction();
+      if (!canProceed()) { speak(data.response); setTimeout(showPaywall, 1200); return; }
       speak(data.response);
     } catch (err) {
       appendMsg('emma', 'Could not reach Emma. Is the server running?');
