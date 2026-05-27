@@ -459,7 +459,7 @@ const server = http.createServer(async (req, res) => {
           if (sess.turns % 5 === 0) {
             setImmediate(async () => {
               try {
-                const compressionMsg = [{ role: 'user', content: `Write a 2-3 sentence private memory about this person for a companion AI. Warm and specific — capture who they are, what matters to them, the emotional texture of our conversation. Don't be clinical.\n\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}` }];
+                const compressionMsg = [{ role: 'user', content: `Write a private note to yourself about this person — 2-3 sentences, in your own voice. Not a summary. What do you notice about them? What do you want to carry forward? Write it as you.\n\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}` }];
                 const r = await claudeChat(compressionMsg);
                 if (r.text?.trim()) {
                   const prev = soulFile || {};
