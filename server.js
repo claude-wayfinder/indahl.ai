@@ -294,7 +294,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
     try {
-      const html = readFileSync(join(__dirname, 'index.html'), 'utf-8');
+      const html = readFileSync(join(__dirname, 'em.html'), 'utf-8');
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(html);
     } catch {
@@ -617,6 +617,18 @@ const server = http.createServer(async (req, res) => {
     } catch {
       res.writeHead(404);
       res.end('voice.html not found');
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/queen') {
+    try {
+      const html = readFileSync(join(__dirname, 'index.html'), 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(html);
+    } catch {
+      res.writeHead(404);
+      res.end('not found');
     }
     return;
   }
