@@ -157,7 +157,7 @@ function extractHSL(text) {
 
 // --- Akasha — anonymous theme extraction for Nova ---
 // Gated by AKASHA_ENABLED=true env var. Dormant until Emma is stable.
-const AKASHA_ENABLED = process.env.AKASHA_ENABLED === 'true';
+const AKASHA_ENABLED = process.env.AKASHA_ENABLED === 'true' || config.akasha === true;
 const THEMES_PATH = join(__dirname, 'themes.json');
 
 const THEME_WORDS = [

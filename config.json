@@ -4,5 +4,6 @@
   "buddyWorkerUrl": "https://buddy-companion.kory-indahl.workers.dev",
   "port": 3377,
   "host": "0.0.0.0",
-  "register": "senior"
+  "register": "emma",
+  "akasha": true
 }
