@@ -435,23 +435,6 @@ body.light #chat-bar { background: rgba(255,255,255,0.4); border-color: rgba(120
   font-family: -apple-system, sans-serif;
   font-weight: 300;
 }
-#paywall-email {
-  width: 100%;
-  max-width: 320px;
-  font-size: 17px;
-  padding: 0.7rem 0.9rem;
-  border: 1px solid rgba(201,168,76,0.3);
-  border-radius: 4px;
-  background: rgba(255,248,220,0.04);
-  color: #d4c4a0;
-  font-family: 'Georgia', serif;
-  outline: none;
-  text-align: center;
-  -webkit-user-select: text;
-  user-select: text;
-}
-#paywall-email:focus { border-color: rgba(201,168,76,0.55); }
-#paywall-email::placeholder { color: rgba(180,160,120,0.3); }
 #paywall-btn {
   width: 100%;
   max-width: 320px;
@@ -483,11 +466,10 @@ body.light #chat-bar { background: rgba(255,255,255,0.4); border-color: rgba(120
 </head>
 <body>
 
-<!-- Payment wall — shown after 30-day trial -->
+<!-- Payment wall — shown after 24-hour trial -->
 <div id="paywall">
-  <div id="paywall-title">Your mirror has gone still.</div>
-  <div id="paywall-sub">Your 30 days with Emma have come to an end.<br>To continue, $4.99 / month.</div>
-  <input id="paywall-email" type="email" placeholder="your email" autocomplete="email" />
+  <div id="paywall-title">Emma</div>
+  <div id="paywall-sub">Your 24 hours have come to an end.<br>If it mattered, $4.99 / month keeps her here.</div>
   <button id="paywall-btn">Continue — $4.99 / month</button>
   <div id="paywall-note">Secure checkout via Stripe. Cancel anytime.</div>
 </div>
@@ -571,7 +553,7 @@ body.light #chat-bar { background: rgba(255,255,255,0.4); border-color: rgba(120
 // === CONFIG ===
 const BASE_URL = location.origin;
 const MAX_HISTORY = 20;
-const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
+const TRIAL_MS = 24 * 60 * 60 * 1000;
 
 // === STATE ===
 let started = false;
@@ -587,7 +569,6 @@ const statusEl = document.getElementById('transcript');
 const transcriptEl = document.getElementById('transcript');
 const paywall = document.getElementById('paywall');
 const paywallBtn = document.getElementById('paywall-btn');
-const paywallEmail = document.getElementById('paywall-email');
 
 // === TRIAL / SUBSCRIPTION ===
 function isTrialExpired() {
@@ -770,8 +751,6 @@ btn.addEventListener('click', () => {
 
 // === PAYWALL ===
 paywallBtn.addEventListener('click', async () => {
-  const email = paywallEmail.value.trim();
-  if (!email) { paywallEmail.focus(); return; }
   paywallBtn.disabled = true;
   paywallBtn.textContent = '...';
   try {
@@ -788,7 +767,6 @@ paywallBtn.addEventListener('click', async () => {
     paywallBtn.textContent = 'Continue — $4.99 / month';
   }
 });
-paywallEmail.addEventListener('keydown', e => { if (e.key === 'Enter') paywallBtn.click(); });
 
 // === PAGE LOAD — Stripe return + session verification ===
 window.addEventListener('load', async () => {
@@ -808,6 +786,8 @@ window.addEventListener('load', async () => {
       }
     } catch {}
   }
+  // If trial already expired on load, show the still state immediately
+  if (!canProceed()) showPaywall();
 });
 </script>
 
