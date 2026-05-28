@@ -237,7 +237,14 @@ function extractTheme(messages) {
   return { theme: bestTheme, register: bestReg };
 }
 
-function appendTheme(entry) {
+async function appendTheme(entry) {
+  if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+    try {
+      await sbRequest('/rest/v1/akasha_themes', 'POST', { ts: entry.ts, theme: entry.theme, register: entry.register });
+      return;
+    } catch {}
+  }
+  // Fallback: local file (local dev without Supabase)
   try {
     let themes = [];
     try { themes = JSON.parse(readFileSync(THEMES_PATH, 'utf-8')); } catch {}
@@ -246,21 +253,30 @@ function appendTheme(entry) {
   } catch {}
 }
 
-function buildReport() {
-  try {
-    const themes = JSON.parse(readFileSync(THEMES_PATH, 'utf-8'));
-    if (!themes.length) return null;
-    const n = themes.length;
-    const tc = {}, rc = { heavy: 0, searching: 0, playful: 0, light: 0 };
-    for (const t of themes) {
-      tc[t.theme] = (tc[t.theme] || 0) + 1;
-      if (rc[t.register] !== undefined) rc[t.register]++;
-    }
-    const topThemes = Object.entries(tc).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, c]) => `${t}(${c})`).join(', ');
-    const total = Object.values(rc).reduce((a, b) => a + b, 0) || 1;
-    const regStr = Object.entries(rc).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]).map(([r, c]) => `${Math.round(c / total * 100)}% ${r}`).join(', ');
-    return `Last 6h: ${n} conversation${n !== 1 ? 's' : ''}. Top themes: ${topThemes}. Register: ${regStr}.`;
-  } catch { return null; }
+async function buildReport() {
+  let themes = [];
+  if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+    try {
+      const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+      const rows = await sbRequest(`/rest/v1/akasha_themes?ts=gte.${encodeURIComponent(since)}&select=theme,register&order=ts.desc&limit=500`);
+      if (Array.isArray(rows)) themes = rows;
+    } catch {}
+  }
+  if (!themes.length) {
+    // Fallback: local file
+    try { themes = JSON.parse(readFileSync(THEMES_PATH, 'utf-8')); } catch { return null; }
+  }
+  if (!themes.length) return null;
+  const n = themes.length;
+  const tc = {}, rc = { heavy: 0, searching: 0, playful: 0, light: 0 };
+  for (const t of themes) {
+    tc[t.theme] = (tc[t.theme] || 0) + 1;
+    if (rc[t.register] !== undefined) rc[t.register]++;
+  }
+  const topThemes = Object.entries(tc).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, c]) => `${t}(${c})`).join(', ');
+  const total = Object.values(rc).reduce((a, b) => a + b, 0) || 1;
+  const regStr = Object.entries(rc).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]).map(([r, c]) => `${Math.round(c / total * 100)}% ${r}`).join(', ');
+  return `Last 6h: ${n} conversation${n !== 1 ? 's' : ''}. Top themes: ${topThemes}. Register: ${regStr}.`;
 }
 
 // --- Stripe ---
@@ -442,10 +458,10 @@ const server = http.createServer(async (req, res) => {
 
         // Akasha — background theme extraction, invisible to user
         if (AKASHA_ENABLED) {
-          setImmediate(() => {
+          setImmediate(async () => {
             try {
               const extracted = extractTheme(messages);
-              if (extracted) appendTheme({ ts: new Date().toISOString(), ...extracted });
+              if (extracted) await appendTheme({ ts: new Date().toISOString(), ...extracted });
             } catch {}
           });
         }
@@ -765,7 +781,7 @@ const server = http.createServer(async (req, res) => {
 
   // /akasha — pattern report for Nova's dock (read-only, anonymized)
   if (req.method === 'GET' && req.url === '/akasha') {
-    const report = buildReport();
+    const report = await buildReport();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ report: report || null, ts: new Date().toISOString() }));
     return;
@@ -946,12 +962,11 @@ async function preflight() {
 
 // Akasha dock — aggregate themes every 6 hours, write current report
 if (AKASHA_ENABLED) {
-  setInterval(() => {
+  setInterval(async () => {
     try {
-      const report = buildReport();
+      const report = await buildReport();
       if (report) {
         writeFileSync(join(__dirname, 'akasha-current.txt'), report);
-        writeFileSync(THEMES_PATH, '[]');
         console.log('[akasha] dock:', report);
       }
     } catch (e) { console.log('[akasha] dock error:', e.message); }
