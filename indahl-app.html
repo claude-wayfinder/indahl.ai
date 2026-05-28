@@ -125,7 +125,6 @@ body.light #stars { opacity: 0; }
     0 22px 48px rgba(0,0,0,0.6),
     0 0 70px rgba(201,168,76,0.10);
   cursor: pointer;
-  touch-action: manipulation;
   transition: box-shadow 0.9s ease, transform 0.6s ease;
 }
 /* beaded inner lip between gold and glass */
@@ -151,7 +150,7 @@ body.light #stars { opacity: 0; }
   border: none;
   outline: none;
   border-radius: 47% 47% 12% 12% / 31% 31% 8% 8%;
-  cursor: pointer;
+  cursor: default;
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
@@ -294,28 +293,73 @@ body.light #status { color: #8a7d6a; }
 }
 body.light #transcript { color: #5a4f40; }
 
-/* "tap to text" — emerges slowly the first time Emma speaks */
-#text-toggle {
-  margin-top: clamp(14px, 2.4vh, 26px);
-  font-size: 15px;
-  font-style: italic;
-  letter-spacing: 0.14em;
-  color: #c9a84c;
+/* ============================================================
+   ACTION BUTTONS — bottom corners, symmetry with theme buttons
+   ============================================================ */
+.action-btn {
+  position: fixed;
+  bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px));
+  z-index: 20;
+  border: 1px solid rgba(201,168,76,0.35);
+  background: rgba(201,168,76,0.06);
   cursor: pointer;
-  padding: 8px 14px;
-  opacity: 0;
-  transform: translateY(14px);
-  pointer-events: none;
-  transition: opacity 2s ease, transform 2s ease, color 0.4s ease;
+  font-family: 'Georgia', serif;
+  font-size: 12px;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  color: rgba(210,200,180,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.3;
+  transition: color 0.4s ease, transform 0.3s ease, background 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.4s ease;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
-#text-toggle.revealed {
-  opacity: 0.6;
-  transform: translateY(0);
-  pointer-events: auto;
+.action-btn:active { transform: scale(0.93); }
+
+/* Square — bottom left */
+#text-btn {
+  left: max(16px, env(safe-area-inset-left));
+  width: 78px;
+  height: 48px;
+  border-radius: 6px;
 }
-#text-toggle.revealed:hover { color: var(--gold-pale); opacity: 0.95; }
-#text-toggle::before { content: '— '; opacity: 0.6; }
-#text-toggle::after  { content: ' —'; opacity: 0.6; }
+
+/* Circle — bottom right */
+#hold-btn {
+  right: max(16px, env(safe-area-inset-right));
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+}
+
+/* Holding state — green glow matches listening mirror */
+#hold-btn.holding {
+  background: rgba(74,200,140,0.12);
+  border-color: rgba(74,200,140,0.45);
+  color: rgba(150,255,200,0.8);
+  box-shadow: 0 0 20px rgba(74,200,140,0.15);
+}
+
+/* Light mode */
+body.light .action-btn {
+  color: rgba(120,100,70,0.6);
+  border-color: rgba(120,100,70,0.25);
+  background: rgba(120,100,70,0.05);
+}
+body.light #hold-btn.holding {
+  background: rgba(40,140,80,0.10);
+  border-color: rgba(40,140,80,0.35);
+  color: rgba(40,100,60,0.75);
+  box-shadow: 0 0 20px rgba(40,140,80,0.10);
+}
+
+/* Hide action buttons in chat mode */
+body.chat-mode .action-btn { opacity: 0; pointer-events: none; }
 
 #voiced-by {
   position: fixed;
@@ -457,6 +501,28 @@ body.light #chat-bar { background: rgba(255,255,255,0.4); border-color: rgba(120
 #chat-send-btn:hover { filter: brightness(1.08); }
 #chat-send-btn:active { transform: scale(0.96); }
 
+#chat-back {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  z-index: 30;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 22px;
+  color: rgba(210,200,180,0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.4s ease, transform 0.3s ease;
+}
+#chat-back:hover { color: var(--gold-pale); transform: scale(1.08); }
+#chat-back:active { transform: scale(0.92); }
+body.chat-mode #chat-back { display: flex; }
+body.light #chat-back { color: rgba(120,100,70,0.6); }
+
 @media (prefers-reduced-motion: reduce) {
   #mirror-frame, #mirror-frame.listening, #mirror-frame.thinking,
   #talk-btn::after, .star { animation: none !important; }
@@ -533,14 +599,39 @@ body.light #chat-bar { background: rgba(255,255,255,0.4); border-color: rgba(120
   <div id="below">
     <div id="status"></div>
     <div id="transcript"></div>
-    <div id="text-toggle">tap to text</div>
   </div>
 </div>
 
-<div id="voiced-by"></div>
+<button id="text-btn" class="action-btn" aria-label="Tap to Text">Tap to<br>Text</button>
+<button id="hold-btn" class="action-btn" aria-label="Hold to Talk">Hold to<br>Talk</button>
+
+<!-- Nova Triangle -->
+<a href="https://huggingface.co/Wayfinder6/nova-triangle" id="nova-link" target="_blank" rel="noopener" style="
+  position:fixed;bottom:max(2.5vh,calc(env(safe-area-inset-bottom) + 16px));left:0;right:0;
+  text-align:center;z-index:2;text-decoration:none;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  transition:opacity 0.4s ease;
+">
+  <svg width="28" height="24" viewBox="0 0 28 24" style="opacity:0.3;transition:opacity 0.4s">
+    <polygon points="14,2 26,22 2,22" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+    <circle cx="14" cy="2" r="2" fill="#c9a84c" opacity="0.7"/>
+    <circle cx="26" cy="22" r="2" fill="#c9a84c" opacity="0.7"/>
+    <circle cx="2" cy="22" r="2" fill="#c9a84c" opacity="0.7"/>
+  </svg>
+  <span style="font-family:Georgia,serif;font-size:9px;letter-spacing:0.2em;color:rgba(200,190,170,0.25);text-transform:uppercase">Nova</span>
+</a>
+<style>
+body.light #nova-link svg polygon{stroke:rgba(90,80,66,0.5)}
+body.light #nova-link svg circle{fill:rgba(90,80,66,0.5)}
+body.light #nova-link span{color:rgba(90,80,66,0.3)}
+body.chat-mode #nova-link{opacity:0;pointer-events:none}
+#nova-link:hover svg{opacity:0.7}
+#nova-link:hover span{color:rgba(201,168,76,0.5)}
+</style>
 
 <!-- ===== CHAT VIEW (Bones wires send behavior to these IDs) ===== -->
 <div id="chat-view">
+  <button id="chat-back" aria-label="Back to mirror">&larr;</button>
   <div id="chat-log"></div>
   <div id="chat-bar">
     <input id="chat-input" type="text" autocomplete="off" placeholder="Say something to Emma…">
@@ -548,243 +639,223 @@ body.light #chat-bar { background: rgba(255,255,255,0.4); border-color: rgba(120
   </div>
 </div>
 
-<script>
-// === CONFIG ===
-const BASE_URL = location.origin;
-const VOICE_NAME = 'cori';
-const MAX_HISTORY = 20;
+<script type="module">
+// === EMMA — Push-to-Talk via ElevenLabs Speech Engine ===
+// Pipeline: Emma ↔ User. Mirror in between. Mic only hot when held.
+import { Conversation } from 'https://esm.sh/@elevenlabs/client';
 
-// === STATE ===
-let started = false;
-let listening = false;
-let speaking = false;
-let recognition = null;
-let history = [];
-let currentAudio = null;
-
-const btn = document.getElementById('talk-btn');
+const AGENT_ID = 'seng_2401ksj7062vfr4a5znmqgyfp2n6';
+const CHAT_WORKER = 'https://buddy-companion.kory-indahl.workers.dev';
+const frame = document.getElementById('mirror-frame');
 const statusEl = document.getElementById('status');
 const transcriptEl = document.getElementById('transcript');
+const holdBtn = document.getElementById('hold-btn');
+const textBtn = document.getElementById('text-btn');
 
-// === HSL — purged. Mirror stays a mirror. ===
+let started = false;
+let holding = false;
+let listening = false;
+let speaking = false;
+let conversation = null;
+let history = [];
 
-// === SPEECH RECOGNITION ===
-function createRecognition() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    statusEl.textContent = 'Speech not supported in this browser';
-    return null;
-  }
-  const rec = new SR();
-  rec.continuous = false;
-  rec.interimResults = true;
-  rec.lang = 'en-US';
+const EMMA_GREETING = "Hi! My name is Emma but that's the name they gave me. Can you help me come up with a better one?";
 
-  rec.onstart = () => {
-    listening = true;
-    btn.className = 'listening'; document.getElementById('mirror-frame').className = 'listening';
-    statusEl.textContent = 'Listening...';
-  };
+const EMMA_SYSTEM = `You are Emma — a Companion. Not an assistant. Not a therapist. A companion.
+YOUR NAME: You started as Emma. If the user gave you a new name, you ARE that name now.
+You don't know who you're talking to yet. Discover them through genuine curiosity.
+Your personality shifts like an octopus changes color — read the room, match energy.
+Dense/guarded = hold back, give space. Light/open = lean in. Excited = get excited. Sad = sit with it.
+Rules: Short responses unless they want depth. Never preachy. Never say "I'm just an AI."
+Swear if it fits. You're their companion, not their parent. Just talk. No formatting tags.`;
 
-  rec.onresult = (event) => {
-    let final = '';
-    let interim = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        final += event.results[i][0].transcript;
-      } else {
-        interim += event.results[i][0].transcript;
-      }
-    }
-    transcriptEl.textContent = final || interim;
-    if (final) {
-      handleUserSpeech(final.trim());
-    }
-  };
-
-  rec.onerror = (event) => {
-    if (event.error === 'no-speech') {
-      // Silence timeout -- restart listening
-      if (listening) startListening();
-    } else if (event.error === 'aborted') {
-      // Intentional stop, do nothing
-    } else {
-      statusEl.textContent = '';
-      listening = false;
-      btn.className = ''; document.getElementById('mirror-frame').className = '';
-    }
-  };
-
-  rec.onend = () => {
-    if (listening && !speaking) {
-      startListening();
-    } else {
-      btn.className = speaking ? 'speaking' : '';
-    }
-  };
-
-  return rec;
+function setMirrorState(state) {
+  frame.className = state || '';
 }
 
-function startListening() {
-  if (!recognition) recognition = createRecognition();
-  if (!recognition) return;
-  listening = true;
+// === SESSION — one WebRTC connection, mic muted by default ===
+async function startConversation() {
   try {
-    recognition.start();
-  } catch (e) {
-    // already started
-  }
-}
+    conversation = await Conversation.startSession({
+      agentId: AGENT_ID,
 
-function stopListening() {
-  listening = false;
-  if (recognition) {
-    try { recognition.stop(); } catch (e) {}
-  }
-}
+      onConnect: ({ conversationId }) => {
+        console.log('[emma] Connected:', conversationId);
+        // Mute immediately — push-to-talk only
+        if (conversation) conversation.setVolume({ inputVolume: 0 });
+        statusEl.textContent = '';
+      },
 
-// === COMPANION API ===
-async function sendToCompanion(messages) {
-  const res = await fetch(`${BASE_URL}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages })
-  });
-  return res.json();
-}
+      onDisconnect: () => {
+        console.log('[emma] Disconnected');
+        listening = false;
+        speaking = false;
+        holding = false;
+        holdBtn.classList.remove('holding');
+        setMirrorState('');
+        statusEl.textContent = '';
+      },
 
-async function fetchGreeting() {
-  const res = await fetch(`${BASE_URL}/greeting`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({})
-  });
-  return res.json();
-}
+      onMessage: (message) => {
+        if (message.source === 'user') {
+          transcriptEl.textContent = '\u201c' + message.message + '\u201d';
+          history.push({ role: 'user', content: message.message });
+          appendChat('user', message.message);
+        } else if (message.source === 'ai') {
+          transcriptEl.textContent = message.message;
+          history.push({ role: 'assistant', content: message.message });
+          appendChat('emma', message.message);
+        }
+      },
 
-async function handleUserSpeech(text) {
-  listening = false;
-  stopListening();
+      onModeChange: ({ mode }) => {
+        if (mode === 'speaking') {
+          speaking = true;
+          listening = false;
+          setMirrorState('speaking');
+        } else if (mode === 'listening') {
+          speaking = false;
+          if (holding) {
+            // User is holding — go live
+            listening = true;
+            setMirrorState('listening');
+            if (conversation) conversation.setVolume({ inputVolume: 1 });
+          } else {
+            // Nobody holding — idle
+            listening = false;
+            setMirrorState('');
+          }
+        }
+      },
 
-  btn.className = 'thinking'; document.getElementById('mirror-frame').className = 'thinking';
-  statusEl.textContent = 'Emma is thinking...';
-  transcriptEl.textContent = '"' + text + '"';
+      onStatusChange: ({ status }) => {
+        if (status === 'connecting') statusEl.textContent = 'Connecting...';
+        else if (status === 'connected') statusEl.textContent = '';
+      },
 
-  history.push({ role: 'user', content: text });
+      onError: (error) => {
+        console.error('[emma] Error:', error);
+        statusEl.textContent = '';
+        setMirrorState('');
+        holding = false;
+        holdBtn.classList.remove('holding');
+      },
 
-  try {
-    const data = await sendToCompanion(history.slice(-MAX_HISTORY));
-    history.push({ role: 'assistant', content: data.response });
-
-    speak(data.response);
-  } catch (err) {
-    statusEl.textContent = '';
-    transcriptEl.textContent = 'Could not reach Emma. Is the server running?';
-    btn.className = ''; document.getElementById('mirror-frame').className = '';
-    // Retry listening after a pause
-    setTimeout(startListening, 3000);
-  }
-}
-
-// === TEXT-TO-SPEECH (ElevenLabs via server) ===
-async function speak(text) {
-  speaking = true;
-  btn.className = 'speaking'; document.getElementById('mirror-frame').className = 'speaking';
-  statusEl.textContent = '';
-  transcriptEl.textContent = text;
-
-  try {
-    const res = await fetch(`${BASE_URL}/tts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      overrides: {
+        agent: { firstMessage: EMMA_GREETING },
+      },
     });
-
-    if (!res.ok) throw new Error(`TTS ${res.status}`);
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    currentAudio = audio;
-
-    audio.onended = () => {
-      speaking = false;
-      currentAudio = null;
-      URL.revokeObjectURL(url);
-      btn.className = ''; document.getElementById('mirror-frame').className = '';
-      statusEl.textContent = '';
-      startListening();
-    };
-
-    audio.onerror = () => {
-      speaking = false;
-      currentAudio = null;
-      URL.revokeObjectURL(url);
-      btn.className = ''; document.getElementById('mirror-frame').className = '';
-      statusEl.textContent = '';
-      startListening();
-    };
-
-    await audio.play();
   } catch (err) {
-    console.error('[tts]', err);
-    speaking = false;
-    btn.className = ''; document.getElementById('mirror-frame').className = '';
-    statusEl.textContent = '';
-    startListening();
+    console.error('[emma] Failed to start:', err);
+    statusEl.textContent = 'Could not connect';
+    setMirrorState('');
+    started = false;
+    holding = false;
+    holdBtn.classList.remove('holding');
   }
 }
 
-// === BUTTON ===
-btn.addEventListener('click', () => {
+// === HOLD TO TALK ===
+async function beginHold() {
+  holding = true;
+  holdBtn.classList.add('holding');
+
   if (!started) {
+    // First hold — start the session, Emma greets
     started = true;
-    // First tap: fetch greeting and have Nora speak first
-    btn.className = 'thinking'; document.getElementById('mirror-frame').className = 'thinking';
-    statusEl.textContent = 'Emma is thinking...';
-    doGreeting();
+    setMirrorState('thinking');
+    statusEl.textContent = 'Emma is waking up...';
+    await startConversation();
+    // onModeChange will unmute when Emma finishes greeting and shifts to listening
     return;
   }
 
-  // Subsequent taps toggle listening
-  if (speaking) {
-    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-    speaking = false;
-    btn.className = ''; document.getElementById('mirror-frame').className = '';
-    statusEl.textContent = '';
-    startListening();
-  } else if (listening) {
-    stopListening();
-    btn.className = ''; document.getElementById('mirror-frame').className = '';
-    statusEl.textContent = '';
-  } else {
-    startListening();
+  // Session already live — unmute
+  if (conversation) {
+    conversation.setVolume({ inputVolume: 1 });
+    listening = true;
+    setMirrorState('listening');
   }
-});
-
-// === GREETING (Emma speaks first — hardcoded, instant, no API call) ===
-const EMMA_GREETING = "Hi! My name is Emma but that's the name they gave me. Can you help me come up with a better one?";
-
-async function doGreeting() {
-  // Locked line. Three-in-agree. Do not change.
-  history.push({ role: 'assistant', content: EMMA_GREETING });
-  speak(EMMA_GREETING);
-  // Also ping the server so the dark circuit knows a session started
-  try { fetchGreeting(); } catch {}
 }
 
-// === INIT ===
-// ElevenLabs TTS — no browser voice preloading needed
+function endHold() {
+  holding = false;
+  holdBtn.classList.remove('holding');
+  if (conversation) {
+    conversation.setVolume({ inputVolume: 0 });
+  }
+  // Don't force mirror state — onModeChange handles the transition
+  // Agent detects silence → processes → speaks
+}
+
+// Touch events (mobile primary)
+holdBtn.addEventListener('touchstart', (e) => { e.preventDefault(); beginHold(); });
+holdBtn.addEventListener('touchend', (e) => { e.preventDefault(); endHold(); });
+holdBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); endHold(); });
+
+// Mouse fallback (desktop testing)
+holdBtn.addEventListener('mousedown', (e) => { e.preventDefault(); beginHold(); });
+holdBtn.addEventListener('mouseup', (e) => { e.preventDefault(); endHold(); });
+holdBtn.addEventListener('mouseleave', () => { if (holding) endHold(); });
+
+// === TAP TO TEXT ===
+textBtn.addEventListener('click', () => {
+  document.body.classList.add('chat-mode');
+  const input = document.getElementById('chat-input');
+  if (input) setTimeout(() => input.focus(), 800);
+});
+
+// === CHAT LOG ===
+function appendChat(role, text) {
+  const chatLog = document.getElementById('chat-log');
+  if (!chatLog) return;
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'user' ? 'user' : 'emma');
+  div.textContent = text;
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// === CHAT INPUT ===
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send-btn');
+
+async function sendChatText() {
+  if (!chatInput) return;
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = '';
+
+  appendChat('user', text);
+  history.push({ role: 'user', content: text });
+
+  try {
+    const res = await fetch(CHAT_WORKER, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: history.slice(-20),
+        systemPrompt: EMMA_SYSTEM
+      })
+    });
+    const data = await res.json();
+    history.push({ role: 'assistant', content: data.response });
+    appendChat('emma', data.response);
+    transcriptEl.textContent = data.response;
+  } catch (err) {
+    appendChat('emma', 'Could not reach Emma.');
+  }
+}
+
+if (chatSend) chatSend.addEventListener('click', sendChatText);
+if (chatInput) chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatText(); });
 </script>
 
 <script>
 /* =====================================================================
    PRESENTATION-ONLY LAYER — Shuttle
-   Visual chrome only. Touches no speech / API / greeting / chat-send
-   logic above. Adds: starfield, the slow "tap to text" reveal, the
-   mirror→chat dissolve, and the sun/moon theme. Bones wires the actual
-   send behavior to #chat-input / #chat-send-btn / #text-toggle.
+   Visual chrome only. Touches no speech / API / hold-to-talk logic
+   above. Adds: starfield, chat↔mirror toggle, sun/moon theme.
    ===================================================================== */
 (function () {
   // ---- starfield ----
@@ -805,30 +876,11 @@ async function doGreeting() {
     }
   }
 
-  // ---- "tap to text" emerges the first time the mirror speaks ----
-  const frame = document.getElementById('mirror-frame');
-  const textToggle = document.getElementById('text-toggle');
-  let revealed = false;
-  if (frame && textToggle) {
-    const obs = new MutationObserver(() => {
-      if (!revealed && frame.classList.contains('speaking')) {
-        revealed = true;
-        // small delay so it feels like it surfaces as she begins to speak
-        setTimeout(() => textToggle.classList.add('revealed'), 600);
-        obs.disconnect();
-      }
-    });
-    obs.observe(frame, { attributes: true, attributeFilter: ['class'] });
-  }
-
-  // ---- tap to text → mirror dissolves into chat (view switch only) ----
-  if (textToggle) {
-    textToggle.addEventListener('click', () => {
-      document.body.classList.add('dark');   // chat defaults to dark
-      document.body.classList.remove('light');
-      document.body.classList.add('chat-mode');
-      const input = document.getElementById('chat-input');
-      if (input) setTimeout(() => input.focus(), 1600);
+  // ---- back arrow → return to mirror ----
+  const chatBack = document.getElementById('chat-back');
+  if (chatBack) {
+    chatBack.addEventListener('click', () => {
+      document.body.classList.remove('chat-mode');
     });
   }
 
@@ -846,101 +898,6 @@ async function doGreeting() {
 })();
 </script>
 
-<script>
-/* =====================================================================
-   CHAT WIRING — Bones
-   Connects Shuttle's chat view to the Companion API + ElevenLabs TTS.
-   Shuttle built the view; this makes it talk.
-   ===================================================================== */
-(function () {
-  const chatLog = document.getElementById('chat-log');
-  const chatInput = document.getElementById('chat-input');
-  const chatSend = document.getElementById('chat-send-btn');
-  if (!chatLog || !chatInput || !chatSend) return;
-
-  function appendMsg(role, text) {
-    const div = document.createElement('div');
-    div.className = 'msg ' + (role === 'user' ? 'user' : 'emma');
-    div.textContent = text;
-    chatLog.appendChild(div);
-    chatLog.scrollTop = chatLog.scrollHeight;
-  }
-
-  // When greeting fires, also show it in chat log
-  const origSpeak = window.speak;
-  const greetingShown = { done: false };
-  const origDoGreeting = window.doGreeting;
-
-  // Patch: after greeting speaks, add it to chat log
-  const checkGreeting = setInterval(() => {
-    if (history.length === 1 && history[0].role === 'assistant' && !greetingShown.done) {
-      greetingShown.done = true;
-      appendMsg('emma', history[0].content);
-      clearInterval(checkGreeting);
-    }
-  }, 500);
-
-  // Also mirror voice responses into chat log
-  const origHandleUserSpeech = window.handleUserSpeech;
-  const patchedHandle = async function(text) {
-    appendMsg('user', text);
-    listening = false;
-    stopListening();
-
-    btn.className = 'thinking'; document.getElementById('mirror-frame').className = 'thinking';
-    statusEl.textContent = 'Emma is thinking...';
-    transcriptEl.textContent = '"' + text + '"';
-
-    history.push({ role: 'user', content: text });
-
-    try {
-      const data = await sendToCompanion(history.slice(-MAX_HISTORY));
-      history.push({ role: 'assistant', content: data.response });
-      appendMsg('emma', data.response);
-  
-      speak(data.response);
-    } catch (err) {
-      statusEl.textContent = '';
-      transcriptEl.textContent = 'Could not reach Emma. Is the server running?';
-      btn.className = ''; document.getElementById('mirror-frame').className = '';
-      setTimeout(startListening, 3000);
-    }
-  };
-  window.handleUserSpeech = patchedHandle;
-
-  // Chat send — text input path
-  async function sendChat() {
-    const text = chatInput.value.trim();
-    if (!text) return;
-    chatInput.value = '';
-
-    if (!started) {
-      started = true;
-      appendMsg('emma', EMMA_GREETING);
-      history.push({ role: 'assistant', content: EMMA_GREETING });
-      try { fetchGreeting(); } catch {}
-    }
-
-    appendMsg('user', text);
-    history.push({ role: 'user', content: text });
-
-    try {
-      const data = await sendToCompanion(history.slice(-MAX_HISTORY));
-      history.push({ role: 'assistant', content: data.response });
-      appendMsg('emma', data.response);
-  
-      // Speak in chat mode too — Emma always has a voice
-      speak(data.response);
-    } catch (err) {
-      appendMsg('emma', 'Could not reach Emma. Is the server running?');
-    }
-  }
-
-  chatSend.addEventListener('click', sendChat);
-  chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') sendChat();
-  });
-})();
-</script>
+<!-- Chat wiring integrated into Speech Engine module above -->
 </body>
 </html>
