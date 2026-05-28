@@ -240,9 +240,13 @@ function extractTheme(messages) {
 async function appendTheme(entry) {
   if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
     try {
-      await sbRequest('/rest/v1/akasha_themes', 'POST', { ts: entry.ts, theme: entry.theme, register: entry.register });
+      const result = await sbRequest('/rest/v1/akasha_themes', 'POST', { ts: entry.ts, theme: entry.theme, register: entry.register });
+      if (result && result.code) console.error('[akasha:insert]', JSON.stringify(result));
+      else console.log('[akasha:insert] ok', entry.theme, entry.register);
       return;
-    } catch {}
+    } catch (e) { console.error('[akasha:insert:catch]', e.message); }
+  } else {
+    console.log('[akasha] Supabase not configured, falling back to file');
   }
   // Fallback: local file (local dev without Supabase)
   try {
