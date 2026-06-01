@@ -14,6 +14,7 @@ const OLLAMA_MODEL = config.ollamaModel || 'phi3:mini';
 const BUDDY_WORKER_URL = process.env.BUDDY_WORKER_URL || config.buddyWorkerUrl || 'https://buddy-companion.kory-indahl.workers.dev';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 const PORT = process.env.PORT || config.port || 3377;
 const HOST = config.host || '0.0.0.0';
 let currentRegister = config.register || 'adult';
@@ -238,12 +239,16 @@ function extractTheme(messages) {
 }
 
 async function appendTheme(entry) {
-  if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+  const sbKey = SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY;
+  if (SUPABASE_URL && sbKey) {
     try {
-      const result = await sbRequest('/rest/v1/akasha_themes', 'POST', { ts: entry.ts, theme: entry.theme, register: entry.register });
-      if (result && result.code) console.error('[akasha:insert]', JSON.stringify(result));
-      else console.log('[akasha:insert] ok', entry.theme, entry.register);
-      return;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/akasha_themes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': sbKey, 'Authorization': `Bearer ${sbKey}`, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ ts: entry.ts, theme: entry.theme, register: entry.register }),
+      });
+      if (res.ok) { console.log('[akasha:insert] ok', entry.theme, entry.register); return; }
+      console.error('[akasha:insert] http', res.status);
     } catch (e) { console.error('[akasha:insert:catch]', e.message); }
   } else {
     console.log('[akasha] Supabase not configured, falling back to file');
@@ -259,10 +264,14 @@ async function appendTheme(entry) {
 
 async function buildReport() {
   let themes = [];
-  if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+  const sbKey = SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY;
+  if (SUPABASE_URL && sbKey) {
     try {
       const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-      const rows = await sbRequest(`/rest/v1/akasha_themes?ts=gte.${encodeURIComponent(since)}&select=theme,register&order=ts.desc&limit=500`);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/akasha_themes?ts=gte.${encodeURIComponent(since)}&select=theme,register&order=ts.desc&limit=500`, {
+        headers: { 'apikey': sbKey, 'Authorization': `Bearer ${sbKey}` },
+      });
+      const rows = await res.json();
       if (Array.isArray(rows)) themes = rows;
     } catch {}
   }
